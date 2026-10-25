@@ -22,6 +22,13 @@ from report_generator import generate_clinical_pdf
 from fhir_exporter import export_fhir_bundle, export_fhir_json
 from ai_service import analyze_prescription_image, generate_dynamic_clinical_plan
 
+# Scientific Open-Source Framework Integration (TDC, PK-Sim, DeepPurpose, comed, Donut)
+from pbpk_engine import simulate_pbpk, PBPKVirtualPatient
+from tdc_ddi_engine import scan_full_regimen_tdc, query_tdc_ddi
+from molecular_engine import calculate_molecular_compatibility, compute_smiles_descriptors, CANONICAL_SMILES
+from pubmed_evidence import fetch_pubmed_evidence
+from vision_ocr_engine import parse_clinical_prescription_text
+
 pgx_engine = PharmacogenomicsEngine()
 
 app = FastAPI(
@@ -311,6 +318,28 @@ def audit_regimen(request: PolypharmacyAuditRequest):
     meds_dict = [{"name": d.name, "dose": getattr(d, "dose", "Standard")} for d in request.medications]
     ai_actions = generate_dynamic_clinical_plan(meds_dict, hazard_score, warnings, pk_data)
 
+    # 4. Harvard TDC (Therapeutics Data Commons) TWOSIDES High-Scale DDI Scan
+    med_names = [d.name for d in request.medications]
+    tdc_hits = scan_full_regimen_tdc(med_names)
+
+    # 5. PubMed NCBI Landmark & Live Medical Evidence (comed CoT paradigm)
+    pubmed_citations = []
+    if len(med_names) >= 2:
+        for i in range(min(3, len(med_names))):
+            for j in range(i + 1, min(4, len(med_names))):
+                ev = fetch_pubmed_evidence(med_names[i], med_names[j])
+                if ev and ev.get("evidence"):
+                    pubmed_citations.append(ev)
+
+    # 6. DeepPurpose-Inspired Molecular SMILES Physicochemical Feature Analysis
+    molecular_evals = []
+    if len(med_names) >= 2:
+        for i in range(min(2, len(med_names))):
+            for j in range(i + 1, min(3, len(med_names))):
+                m_res = calculate_molecular_compatibility(med_names[i], med_names[j])
+                if m_res.get("status") == "COMPUTED":
+                    molecular_evals.append(m_res)
+
     return {
         "hazard_score": hazard_score,
         "medication_count": len(request.medications),
@@ -319,7 +348,10 @@ def audit_regimen(request: PolypharmacyAuditRequest):
         "fda_warnings": fda_boxed_warnings,
         "actions": ai_actions,
         "pharmacokinetics": pk_data,
-        "pharmacogenomics": pgx_result
+        "pharmacogenomics": pgx_result,
+        "tdc_ddi_hits": tdc_hits,
+        "pubmed_citations": pubmed_citations,
+        "molecular_evaluations": molecular_evals
     }
 
 @app.post("/api/analyze-prescription")
@@ -440,6 +472,83 @@ def export_fhir(request: PolypharmacyAuditRequest):
             "Content-Disposition": f"attachment; filename=fhir_bundle_{request.patient_id}.json"
         }
     )
+
+# -------------------------------------------------------------
+# 5 ADVANCED OPEN-SOURCE FRAMEWORK SCIENTIFIC ENDPOINTS
+# -------------------------------------------------------------
+
+class PBPKSimulationRequest(BaseModel):
+    dose_mg: float = 10.0
+    ka: float = 1.2
+    ke: float = 0.05
+    vd_base: float = 0.8
+    f_bioavailability: float = 0.9
+    age: float = 65.0
+    weight_kg: float = 70.0
+    height_cm: float = 170.0
+    sex: str = "male"
+    egfr: float = 60.0
+    cyp_inhibition_factor: float = 1.0
+
+class TDCDDIScanRequest(BaseModel):
+    medications: List[str]
+
+class MolecularCompatibilityRequest(BaseModel):
+    drug1: str
+    drug2: str
+
+class TextPrescriptionRequest(BaseModel):
+    text: str
+
+@app.post("/api/pbpk/simulate")
+def api_simulate_pbpk(req: PBPKSimulationRequest):
+    """PK-Sim / OSP inspired multi-compartment PBPK ODE integration."""
+    patient = PBPKVirtualPatient(
+        age=req.age,
+        weight_kg=req.weight_kg,
+        height_cm=req.height_cm,
+        sex=req.sex,
+        egfr_ml_min=req.egfr
+    )
+    result = simulate_pbpk(
+        dose_mg=req.dose_mg,
+        ka=req.ka,
+        ke=req.ke,
+        vd_base=req.vd_base,
+        f_bioavailability=req.f_bioavailability,
+        patient=patient,
+        cyp_inhibition_factor=req.cyp_inhibition_factor
+    )
+    return result
+
+@app.post("/api/tdc/scan")
+def api_scan_tdc(req: TDCDDIScanRequest):
+    """Harvard & Stanford TDC (Therapeutics Data Commons) TWOSIDES DDI Scan."""
+    hits = scan_full_regimen_tdc(req.medications)
+    return {
+        "status": "SUCCESS",
+        "total_hits": len(hits),
+        "interactions": hits
+    }
+
+@app.post("/api/molecular/compatibility")
+def api_molecular_compatibility(req: MolecularCompatibilityRequest):
+    """DeepPurpose-inspired molecular SMILES descriptor & steric overlap scorer."""
+    return calculate_molecular_compatibility(req.drug1, req.drug2)
+
+@app.get("/api/pubmed/evidence/{drug1}/{drug2}")
+def api_pubmed_evidence(drug1: str, drug2: str):
+    """comed-inspired live NCBI PubMed literature retrieval with PMID citations."""
+    return fetch_pubmed_evidence(drug1, drug2)
+
+@app.post("/api/ocr/parse-text")
+def api_parse_prescription_text(req: TextPrescriptionRequest):
+    """Donut/TrOCR clinical entity recognition on prescription text."""
+    extracted = parse_clinical_prescription_text(req.text)
+    return {
+        "status": "SUCCESS",
+        "extracted_medications": extracted
+    }
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
