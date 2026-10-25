@@ -1,0 +1,63 @@
+name: Pharmaco-Llama Clinical CI & Verification Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  clinical-verification:
+    name: Verify Clinical Pharmacology Engine (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+          cache-dependency-path: "server/requirements.txt"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r server/requirements.txt
+          pip install httpx requests pytest
+
+      - name: Run Core Clinical & Pharmacokinetic Unit Tests
+        working-directory: server
+        run: |
+          echo "=== RUNNING CORE PHARMACOKINETICS & CYP450 MATH TESTS ==="
+          python -m unittest test_pharmaco.py -v
+
+      - name: Run Pharmacogenomics (PGx) & Metabolic Variant Tests
+        working-directory: server
+        run: |
+          echo "=== RUNNING PHARMACOGENOMICS & CPIC/FDA BOXED WARNING TESTS ==="
+          python -m unittest test_pharmacogenomics.py -v
+
+      - name: Run FHIR R4 & PDF Clinical Reporting Tests
+        working-directory: server
+        run: |
+          echo "=== RUNNING FHIR R4 & PDF CLINICAL REPORTING TESTS ==="
+          python -m unittest test_reporting.py -v
+
+      - name: Audit OpenFDA API SLA & Service Healthcheck
+        working-directory: server
+        run: |
+          echo "=== AUDITING OPENFDA LATENCY & SERVICE HEALTHCHECK ==="
+          python audit_openfda_health.py
+
+      - name: Run High-Speed Polypharmacy Stress Benchmark Smoke Test
+        run: |
+          echo "=== EXECUTING CLINICAL STRESS BENCHMARK SMOKE VERIFICATION ==="
+          python benchmark/run_stress_benchmark.py --iterations 100

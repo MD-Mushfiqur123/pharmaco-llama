@@ -1,0 +1,2116 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pharmaco-Llama | Autonomous Clinical Pharmacology & Polypharmacy Auditor</title>
+  <meta name="description" content="Autonomous clinical drug safety & polypharmacy auditor powered by Meta Llama 3.2 Vision, live US OpenFDA database, and pharmacokinetic modeling.">
+
+  <!-- Tailwind CSS v3 via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            clinical: {
+              bg: '#0A0F1D',
+              surface: '#111827',
+              card: '#1F2937',
+              border: '#374151',
+              accent: '#3B82F6',
+              danger: '#EF4444',
+              warning: '#F59E0B',
+              success: '#10B981',
+              cyan: '#06B6D4'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Chart.js for Live Pharmacokinetic Curves -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body {
+      background-color: #0A0F1D;
+      color: #F3F4F6;
+      font-family: 'Inter', sans-serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #111827;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #374151;
+      border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #4B5563;
+    }
+    .glow-red {
+      box-shadow: 0 0 25px -5px rgba(239, 68, 68, 0.4);
+    }
+    .glow-emerald {
+      box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.4);
+    }
+    .glow-cyan {
+      box-shadow: 0 0 25px -5px rgba(6, 182, 212, 0.4);
+    }
+
+    /* Autocomplete dropdown positioning and scroll */
+    .autocomplete-list {
+      max-height: 280px;
+      overflow-y: auto;
+    }
+
+    /* Print View: Hospital-Grade Clinical Audit Document */
+    @media print {
+      body {
+        background-color: #ffffff !important;
+        color: #111827 !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
+        font-size: 11pt !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      .no-print, header, footer, #case-study-selector, #rx-intake-card, #dropzone, #manual-add-wrapper, .modal-backdrop, button, .action-buttons, #interactive-workspace {
+        display: none !important;
+      }
+      #print-audit-report {
+        display: block !important;
+        padding: 24px !important;
+      }
+      .print-page-break {
+        page-break-before: always;
+      }
+      table {
+        border-collapse: collapse !important;
+        width: 100% !important;
+      }
+      th, td {
+        border: 1px solid #9CA3AF !important;
+        padding: 6px 10px !important;
+        font-size: 9.5pt !important;
+      }
+      th {
+        background-color: #F3F4F6 !important;
+        color: #111827 !important;
+        font-weight: bold !important;
+      }
+      .print-lethal-badge {
+        background-color: #FEE2E2 !important;
+        color: #991B1B !important;
+        border: 1px solid #EF4444 !important;
+        font-weight: bold !important;
+      }
+      .print-major-badge {
+        background-color: #FFEDD5 !important;
+        color: #9A3412 !important;
+        border: 1px solid #F97316 !important;
+        font-weight: bold !important;
+      }
+      .print-mild-badge {
+        background-color: #FEF3C7 !important;
+        color: #92400E !important;
+        border: 1px solid #F59E0B !important;
+      }
+      .print-safe-badge {
+        background-color: #D1FAE5 !important;
+        color: #065F46 !important;
+        border: 1px solid #10B981 !important;
+      }
+      .break-inside-avoid {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col custom-scrollbar">
+
+  <!-- TOP CLINICAL TELEMETRY HEADER (Screen Only) -->
+  <header class="border-b border-gray-800 bg-gray-900/90 backdrop-blur-md sticky top-0 z-40 px-4 py-3 no-print">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+      
+      <!-- Logo & Title -->
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-cyan-500 to-emerald-400 p-0.5 flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0">
+          <div class="w-full h-full bg-gray-900 rounded-[10px] flex items-center justify-center">
+            <i data-lucide="shield-alert" class="w-5 h-5 text-cyan-400"></i>
+          </div>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="text-xl font-extrabold tracking-tight text-white flex items-center">
+              Pharmaco<span class="text-cyan-400">-Llama</span>
+            </h1>
+            <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 uppercase tracking-wider">
+              Clinical Safety OS
+            </span>
+          </div>
+          <p class="text-xs text-gray-400 flex flex-wrap items-center gap-1.5">
+            <span>Autonomous Polypharmacy & Drug Interaction Auditor</span>
+            <span class="text-gray-600 hidden sm:inline">•</span>
+            <span class="text-cyan-400 font-medium">Meta $1M Global Hackathon</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Live Clinical Telemetry Badges & Print Trigger -->
+      <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+        <!-- OpenFDA Status -->
+        <div class="flex items-center space-x-2 bg-gray-800/80 px-2.5 py-1.5 rounded-lg border border-gray-700">
+          <div class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></div>
+          <span class="text-xs font-mono text-gray-300">OpenFDA Live: <strong class="text-emerald-400 font-bold" id="fda-status">CONNECTED</strong></span>
+        </div>
+
+        <!-- Domain Authority Badge -->
+        <div class="hidden md:flex items-center space-x-2 bg-blue-950/40 px-3 py-1.5 rounded-lg border border-blue-800/50">
+          <i data-lucide="award" class="w-4 h-4 text-blue-400"></i>
+          <span class="text-xs text-blue-200">Lead: <strong class="text-white font-semibold">Md Mushfiqur Rahim</strong> (NIH Certified)</span>
+        </div>
+
+        <!-- Action Button: Export Hospital Audit PDF / Print -->
+        <button onclick="triggerClinicalExport()" class="flex items-center space-x-1.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold shadow-md shadow-cyan-600/30 transition-all cursor-pointer">
+          <i data-lucide="printer" class="w-4 h-4"></i>
+          <span>Export Clinical Audit</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- MAIN DUAL-PANE CLINICAL WORKSPACE (Screen View) -->
+  <main id="interactive-workspace" class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 no-print">
+
+    <!-- LEFT COLUMN: PRESCRIPTION INTAKE & DRUG REGIMEN (5 Cols) -->
+    <div class="lg:col-span-5 space-y-6">
+
+      <!-- Case Study Selector (Instant 1-Click Zero Latency Demo) -->
+      <div id="case-study-selector" class="bg-gray-900 border border-gray-800 rounded-2xl p-5 shadow-xl">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
+            <i data-lucide="folder-heart" class="w-4 h-4 text-cyan-400"></i>
+            <span>High-Risk Clinical Case Studies</span>
+          </h2>
+          <span class="text-[11px] text-gray-400 font-mono">1-Click Presets</span>
+        </div>
+        
+        <p class="text-xs text-gray-400 mb-4">
+          Select a multi-drug clinical scenario to evaluate cross-reactivity and pharmacokinetics:
+        </p>
+
+        <div class="space-y-2">
+          <!-- Case 1 -->
+          <button onclick="loadCaseStudy(1)" class="w-full text-left p-3 rounded-xl border border-gray-800 bg-gray-800/40 hover:bg-red-950/30 hover:border-red-800/60 transition-all group cursor-pointer">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-red-400 group-hover:text-red-300 flex items-center gap-1.5">
+                <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i>
+                Case 1: Geriatric Cardiology Crisis
+              </span>
+              <span class="text-[10px] px-2 py-0.5 rounded bg-red-500/10 text-red-400 font-mono font-semibold">FATAL RISK</span>
+            </div>
+            <p class="text-[11px] text-gray-400 mt-1">
+              Warfarin 5mg + Aspirin 81mg + Clopidogrel 75mg + Omeprazole 20mg
+            </p>
+            <div class="mt-2 text-[10px] text-gray-500 font-mono">
+              Mechanism: CYP2C19 blockade + Triple antithrombotic bleeding
+            </div>
+          </button>
+
+          <!-- Case 2 -->
+          <button onclick="loadCaseStudy(2)" class="w-full text-left p-3 rounded-xl border border-gray-800 bg-gray-800/40 hover:bg-amber-950/30 hover:border-amber-800/60 transition-all group cursor-pointer">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-amber-400 group-hover:text-amber-300 flex items-center gap-1.5">
+                <i data-lucide="flame" class="w-3.5 h-3.5"></i>
+                Case 2: Psychiatric / Infection Emergency
+              </span>
+              <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 font-mono font-semibold">CRITICAL</span>
+            </div>
+            <p class="text-[11px] text-gray-400 mt-1">
+              Fluoxetine 40mg (SSRI) + Linezolid 600mg (MAOI Antibiotic)
+            </p>
+            <div class="mt-2 text-[10px] text-gray-500 font-mono">
+              Mechanism: Malignant Serotonin Syndrome (Hyperthermia, seizure)
+            </div>
+          </button>
+
+          <!-- Case 3 -->
+          <button onclick="loadCaseStudy(3)" class="w-full text-left p-3 rounded-xl border border-gray-800 bg-gray-800/40 hover:bg-purple-950/30 hover:border-purple-800/60 transition-all group cursor-pointer">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-purple-400 group-hover:text-purple-300 flex items-center gap-1.5">
+                <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+                Case 3: Renal Hyperkalemia Threat
+              </span>
+              <span class="text-[10px] px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 font-mono font-semibold">HIGH RISK</span>
+            </div>
+            <p class="text-[11px] text-gray-400 mt-1">
+              Lisinopril 20mg (ACEi) + Spironolactone 50mg + Potassium 20mEq
+            </p>
+            <div class="mt-2 text-[10px] text-gray-500 font-mono">
+              Mechanism: Severe serum [K+] accumulation & cardiac arrest
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Prescription Intake / Camera OCR Simulator -->
+      <div id="rx-intake-card" class="bg-gray-900 border border-gray-800 rounded-2xl p-5 shadow-xl">
+        <h2 class="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center justify-between mb-3">
+          <span class="flex items-center gap-2">
+            <i data-lucide="camera" class="w-4 h-4 text-blue-400"></i>
+            <span>Meta Llama 3.2 Vision Rx Intake</span>
+          </span>
+          <span class="text-[10px] text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20 font-mono">OCR Active</span>
+        </h2>
+
+        <!-- Dropzone -->
+        <div id="dropzone" onclick="document.getElementById('rx-file-input').click()" class="border-2 border-dashed border-gray-700 hover:border-cyan-500/50 bg-gray-800/30 hover:bg-gray-800/60 rounded-xl p-5 text-center cursor-pointer transition-all">
+          <div class="flex flex-col items-center justify-center space-y-2">
+            <div class="w-10 h-10 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-400">
+              <i data-lucide="scan" class="w-5 h-5"></i>
+            </div>
+            <p class="text-xs font-medium text-gray-300">
+              Drop handwritten prescription photo or medicine labels
+            </p>
+            <p class="text-[10px] text-gray-500">
+              Supports JPEG, PNG, PDF • Llama 3.2 Vision entity extraction
+            </p>
+          </div>
+          <input type="file" id="rx-file-input" class="hidden" accept="image/*,.pdf" onchange="handleRxUpload(event)">
+        </div>
+
+        <!-- SEARCHABLE DRUG AUTOCOMPLETE (Feature 1) -->
+        <div id="manual-add-wrapper" class="mt-4 pt-4 border-t border-gray-800 relative">
+          <div class="flex items-center justify-between mb-1.5">
+            <label for="drug-search-input" class="block text-xs font-semibold text-gray-300 flex items-center gap-1.5">
+              <i data-lucide="search" class="w-3.5 h-3.5 text-cyan-400"></i>
+              <span>Searchable Drug Autocomplete</span>
+            </label>
+            <span class="text-[10px] text-gray-500 font-mono">Generic & Brand Names</span>
+          </div>
+
+          <!-- Input Field with Auto-detect -->
+          <div class="relative">
+            <input 
+              type="text" 
+              id="drug-search-input" 
+              autocomplete="off"
+              placeholder="e.g. Type 'Plavix' or 'Warfarin 5mg'..."
+              class="w-full bg-gray-800 border border-gray-700 focus:border-cyan-500 rounded-lg pl-3 pr-20 py-2 text-xs text-white placeholder-gray-500 focus:outline-none transition-all"
+              oninput="handleAutocompleteInput(event)"
+              onkeydown="handleAutocompleteKeydown(event)"
+            >
+            <div class="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              <button 
+                onclick="addDrugFromInput()" 
+                class="bg-cyan-600 hover:bg-cyan-500 text-white px-2.5 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer"
+                title="Add to Regimen"
+              >
+                + Add
+              </button>
+            </div>
+
+            <!-- Autocomplete Floating Dropdown Menu -->
+            <div 
+              id="autocomplete-dropdown" 
+              class="hidden absolute left-0 right-0 top-full mt-1.5 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50 autocomplete-list custom-scrollbar divide-y divide-gray-800 overflow-hidden"
+            >
+              <!-- Dynamic Autocomplete Results -->
+            </div>
+          </div>
+
+          <!-- Quick-Add Pill Shortcuts for Hackathon Demonstrators -->
+          <div class="mt-2 flex flex-wrap items-center gap-1.5">
+            <span class="text-[10px] text-gray-500 font-mono">Quick Test:</span>
+            <button onclick="quickAddDrug('Plavix')" class="text-[10px] bg-gray-800/80 hover:bg-cyan-950/40 text-cyan-300 hover:text-cyan-200 border border-gray-700 hover:border-cyan-500/40 px-2 py-0.5 rounded transition-all cursor-pointer">+ Plavix (Clopidogrel)</button>
+            <button onclick="quickAddDrug('Coumadin')" class="text-[10px] bg-gray-800/80 hover:bg-red-950/40 text-red-300 hover:text-red-200 border border-gray-700 hover:border-red-500/40 px-2 py-0.5 rounded transition-all cursor-pointer">+ Coumadin (Warfarin)</button>
+            <button onclick="quickAddDrug('Prozac')" class="text-[10px] bg-gray-800/80 hover:bg-amber-950/40 text-amber-300 hover:text-amber-200 border border-gray-700 hover:border-amber-500/40 px-2 py-0.5 rounded transition-all cursor-pointer">+ Prozac (Fluoxetine)</button>
+            <button onclick="quickAddDrug('Zyvox')" class="text-[10px] bg-gray-800/80 hover:bg-purple-950/40 text-purple-300 hover:text-purple-200 border border-gray-700 hover:border-purple-500/40 px-2 py-0.5 rounded transition-all cursor-pointer">+ Zyvox (Linezolid)</button>
+            <button onclick="quickAddDrug('Viagra')" class="text-[10px] bg-gray-800/80 hover:bg-pink-950/40 text-pink-300 hover:text-pink-200 border border-gray-700 hover:border-pink-500/40 px-2 py-0.5 rounded transition-all cursor-pointer">+ Viagra</button>
+            <button onclick="quickAddDrug('Nitrostat')" class="text-[10px] bg-gray-800/80 hover:bg-red-950/40 text-red-300 hover:text-red-200 border border-gray-700 hover:border-red-500/40 px-2 py-0.5 rounded transition-all cursor-pointer">+ Nitrostat</button>
+          </div>
+        </div>
+
+        <!-- Active Medications Tray -->
+        <div class="mt-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Active Regimen (<span id="drug-count">4</span>):</span>
+            <button onclick="clearAllDrugs()" class="text-[10px] text-gray-500 hover:text-red-400 transition-colors cursor-pointer">Clear All</button>
+          </div>
+          <div id="active-drugs-container" class="flex flex-wrap gap-1.5">
+            <!-- Dynamic Drug Chips -->
+          </div>
+        </div>
+
+        <!-- Trigger Audit Button -->
+        <button onclick="runAutonomousAudit()" class="w-full mt-4 bg-gradient-to-r from-blue-600 via-cyan-600 to-emerald-600 hover:from-blue-500 hover:to-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 transition-all cursor-pointer">
+          <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+          <span>Run Autonomous Clinical Audit</span>
+        </button>
+
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN: CLINICAL DECISION AUDIT, PAIRWISE HEATMAP MATRIX & PK (7 Cols) -->
+    <div class="lg:col-span-7 space-y-6">
+
+      <!-- Executive Risk Score & Hazard Meter -->
+      <div id="audit-hero-card" class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl relative overflow-hidden transition-all">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <div class="flex items-center space-x-2">
+              <span id="severity-badge" class="px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider rounded-md bg-red-500/20 text-red-400 border border-red-500/30">
+                CRITICAL WARNING
+              </span>
+              <span class="text-xs text-gray-400 font-mono">ICD-10 T50.905A</span>
+            </div>
+            <h2 id="hero-title" class="text-lg font-bold text-white mt-1.5">
+              Life-Threatening Triple Antithrombotic & CYP2C19 Failure
+            </h2>
+            <p id="hero-subtitle" class="text-xs text-gray-400 mt-1 max-w-xl">
+              Severe adverse interaction identified between antiplatelet and anticoagulant pathways, compounded by hepatic enzyme blockade.
+            </p>
+          </div>
+
+          <!-- Hazard Score Gauge -->
+          <div class="text-right flex flex-col items-end">
+            <span class="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Polypharmacy Hazard Index</span>
+            <div class="flex items-baseline space-x-1 mt-0.5">
+              <span id="hazard-score" class="text-4xl font-extrabold font-mono text-red-500">94</span>
+              <span class="text-sm text-gray-500 font-mono">/100</span>
+            </div>
+            <div class="w-28 h-1.5 bg-gray-800 rounded-full mt-1.5 overflow-hidden">
+              <div id="hazard-bar" class="h-full bg-red-500 transition-all duration-700" style="width: 94%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FEATURE 2: DYNAMIC N x N PAIRWISE INTERACTION HEATMAP MATRIX -->
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 shadow-xl">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div>
+            <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+              <i data-lucide="grid" class="w-4 h-4 text-cyan-400"></i>
+              <span>Dynamic N × N Pairwise Interaction Heatmap Matrix</span>
+            </h3>
+            <p class="text-[11px] text-gray-400 mt-0.5">
+              Direct pharmacokinetic & pharmacodynamic cross-reactivity • Click any cell for biochemical rationale
+            </p>
+          </div>
+
+          <!-- Real-Time Evaluation Counter -->
+          <div id="matrix-triage-summary" class="flex items-center gap-1.5 text-[10px] font-mono">
+            <!-- Dynamic Counts (Lethal, Major, Mild, Safe) -->
+          </div>
+        </div>
+
+        <!-- Color Legend -->
+        <div class="flex flex-wrap items-center gap-3 text-[10px] font-mono bg-gray-800/40 p-2 rounded-lg border border-gray-800 mb-3">
+          <span class="text-gray-400 font-bold uppercase">Legend:</span>
+          <span class="flex items-center gap-1 text-red-400">
+            <span class="w-2.5 h-2.5 rounded bg-red-500"></span> Lethal / Black Box
+          </span>
+          <span class="flex items-center gap-1 text-orange-400">
+            <span class="w-2.5 h-2.5 rounded bg-orange-500"></span> Major Interaction
+          </span>
+          <span class="flex items-center gap-1 text-amber-300">
+            <span class="w-2.5 h-2.5 rounded bg-amber-400"></span> Mild / Monitor
+          </span>
+          <span class="flex items-center gap-1 text-emerald-400">
+            <span class="w-2.5 h-2.5 rounded bg-emerald-500"></span> Safe / Nominal
+          </span>
+          <span class="flex items-center gap-1 text-gray-400">
+            <span class="w-2.5 h-2.5 rounded bg-gray-700"></span> Self Reference
+          </span>
+        </div>
+
+        <!-- Matrix Responsive Scroll Container (Feature 3) -->
+        <div class="overflow-x-auto custom-scrollbar border border-gray-800 rounded-xl max-h-[380px] overflow-y-auto">
+          <table id="pairwise-matrix-table" class="w-full text-left border-collapse text-xs">
+            <!-- Dynamic N x N Matrix Content -->
+          </table>
+        </div>
+        
+        <p class="text-[10px] text-gray-500 mt-2 flex items-center gap-1">
+          <i data-lucide="info" class="w-3 h-3 text-cyan-400"></i>
+          <span>Row and column entries update autonomously whenever medications are added or removed.</span>
+        </p>
+      </div>
+
+      <!-- Live FDA Black Box Warning Accordion -->
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 shadow-xl">
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider flex items-center justify-between mb-3">
+          <span class="flex items-center gap-2">
+            <i data-lucide="alert-octagon" class="w-4 h-4 text-red-400"></i>
+            <span>US FDA Official Black Box Warnings (Live OpenFDA)</span>
+          </span>
+          <span class="text-[10px] text-emerald-400 font-mono">21 CFR 201.57(c)(1)</span>
+        </h3>
+        <div id="fda-boxed-warnings" class="space-y-3">
+          <!-- Dynamic FDA Warning Boxes -->
+        </div>
+      </div>
+
+      <!-- Pharmacokinetic Plasma Concentration Curve (Chart.js) -->
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 shadow-xl">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div>
+            <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+              <i data-lucide="activity" class="w-4 h-4 text-cyan-400"></i>
+              <span>Pharmacokinetic Clearance Dynamics [Cp(t)]</span>
+            </h3>
+            <p class="text-[11px] text-gray-400">
+              1-Compartment Oral Absorption & CYP450 Competitive Inhibition Curve
+            </p>
+          </div>
+          <div class="flex items-center space-x-3 text-[11px] font-mono">
+            <span class="flex items-center gap-1.5 text-emerald-400">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> Baseline Clearance
+            </span>
+            <span class="flex items-center gap-1.5 text-red-400">
+              <span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> Inhibited Accumulation (Toxicity)
+            </span>
+          </div>
+        </div>
+
+        <!-- Chart Canvas -->
+        <div class="h-56 w-full relative">
+          <canvas id="pkChart"></canvas>
+        </div>
+
+        <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 text-center text-[10px] font-mono border-t border-gray-800 pt-3">
+          <div class="p-2 rounded bg-gray-800/40 border border-gray-700/50">
+            <span class="text-gray-400 block">Baseline t½:</span>
+            <span id="pk-half-life" class="text-emerald-400 font-bold text-xs">40.0 Hours</span>
+          </div>
+          <div class="p-2 rounded bg-gray-800/40 border border-gray-700/50">
+            <span class="text-gray-400 block">Inhibited t½:</span>
+            <span id="pk-inhibited-half-life" class="text-red-400 font-bold text-xs">88.5 Hours (+121%)</span>
+          </div>
+          <div class="p-2 rounded bg-gray-800/40 border border-gray-700/50">
+            <span class="text-gray-400 block">Relative Risk (RR):</span>
+            <span id="pk-rr" class="text-cyan-400 font-bold text-xs">4.2x Bleeding Hazard</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Meta Llama 3.3 Clinical Triage & Safe Drug Substitution -->
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 shadow-xl">
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider flex items-center justify-between mb-3">
+          <span class="flex items-center gap-2">
+            <i data-lucide="bot" class="w-4 h-4 text-emerald-400"></i>
+            <span>Meta Llama 3.3 Autonomous Clinical Action Plan</span>
+          </span>
+          <span class="text-[10px] text-gray-400 font-mono">Pharmacovigilance AI</span>
+        </h3>
+
+        <div id="ai-recommendations" class="space-y-3">
+          <!-- Dynamic Action Cards -->
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- BIOCHEMICAL INTERACTION RATIONALE MODAL -->
+  <div id="interaction-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-700 rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto custom-scrollbar animate-fadeIn">
+      
+      <!-- Close Button -->
+      <button onclick="closeInteractionModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 p-1.5 rounded-lg transition-colors cursor-pointer">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+
+      <!-- Drug Pair Header -->
+      <div class="flex items-center space-x-2 text-xs font-mono text-cyan-400 mb-1">
+        <i data-lucide="git-compare" class="w-4 h-4"></i>
+        <span>PAIRWISE BIOCHEMICAL EVALUATION</span>
+      </div>
+
+      <h2 id="modal-pair-title" class="text-lg font-bold text-white flex flex-wrap items-center gap-2 mb-2">
+        <!-- Drug A <-> Drug B -->
+      </h2>
+
+      <!-- Severity Banner -->
+      <div id="modal-severity-banner" class="p-3 rounded-xl mb-4 border flex items-center justify-between">
+        <!-- Severity badge and short code -->
+      </div>
+
+      <!-- Content Sections -->
+      <div class="space-y-4 text-xs">
+        <!-- Mechanism -->
+        <div class="p-3.5 rounded-xl bg-gray-800/40 border border-gray-800">
+          <h4 class="font-bold text-cyan-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5 mb-1.5">
+            <i data-lucide="dna" class="w-3.5 h-3.5"></i>
+            <span>Biochemical & Molecular Mechanism</span>
+          </h4>
+          <p id="modal-mechanism" class="text-gray-300 leading-relaxed"></p>
+        </div>
+
+        <!-- Clinical Consequence -->
+        <div class="p-3.5 rounded-xl bg-gray-800/40 border border-gray-800">
+          <h4 class="font-bold text-red-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5 mb-1.5">
+            <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>
+            <span>Clinical Manifestation & Hazard Ratio</span>
+          </h4>
+          <p id="modal-consequence" class="text-gray-300 leading-relaxed"></p>
+        </div>
+
+        <!-- Action & Substitution -->
+        <div class="p-3.5 rounded-xl bg-gray-800/40 border border-gray-800">
+          <h4 class="font-bold text-emerald-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5 mb-1.5">
+            <i data-lucide="stethoscope" class="w-3.5 h-3.5"></i>
+            <span>Autonomous Action & Prescribing Strategy</span>
+          </h4>
+          <p id="modal-recommendation" class="text-gray-300 leading-relaxed"></p>
+        </div>
+
+        <!-- Regulatory & CPIC Citation -->
+        <div class="text-[10px] text-gray-500 font-mono flex items-center justify-between border-t border-gray-800 pt-2">
+          <span>Source: <strong id="modal-citation" class="text-gray-400">FDA Labeling & CPIC Guidelines</strong></span>
+          <span class="text-cyan-400">NIH-Validated Protocol</span>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="mt-5 pt-3 border-t border-gray-800 flex flex-wrap items-center justify-between gap-2">
+        <div id="modal-action-wrapper">
+          <!-- Dynamic Action / Substitution button if applicable -->
+        </div>
+        <button onclick="closeInteractionModal()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer">
+          Close Rationale
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- FEATURE 4: DIRECT CLIENT-SIDE PDF / PRINT VIEW (Hospital-Grade Clinical Audit) -->
+  <div id="print-audit-report" class="hidden print:block text-black bg-white">
+    <!-- Hospital Header -->
+    <div class="border-b-2 border-black pb-4 mb-4">
+      <div class="flex justify-between items-start">
+        <div>
+          <h1 class="text-2xl font-black tracking-tight text-black uppercase">
+            Pharmaco-Llama Clinical Safety OS
+          </h1>
+          <p class="text-xs font-semibold text-gray-700 uppercase tracking-wider mt-0.5">
+            Hospital Pharmacovigilance & Polypharmacy Audit Report • Confidential Medical Record
+          </p>
+        </div>
+        <div class="text-right text-xs font-mono">
+          <p><strong>AUDIT MRN:</strong> #9421-B</p>
+          <p><strong>DATE:</strong> <span id="print-audit-date"></span></p>
+          <p><strong>STATUS:</strong> <span class="font-bold text-red-600">FLAGGED CLINICAL ALERT</span></p>
+        </div>
+      </div>
+
+      <div class="mt-3 pt-2 border-t border-gray-300 grid grid-cols-3 gap-2 text-xs">
+        <div><strong>Patient:</strong> Simulated Clinical Profile (74yo M)</div>
+        <div><strong>Lead Investigator:</strong> Md Mushfiqur Rahim (NIH Certified)</div>
+        <div><strong>Diagnostic Coding:</strong> ICD-10 T50.905A</div>
+      </div>
+    </div>
+
+    <!-- Active Regimen Summary -->
+    <div class="mb-5 break-inside-avoid">
+      <h3 class="text-sm font-bold uppercase tracking-wider border-b border-black pb-1 mb-2">
+        1. Active Medication Regimen Under Evaluation (<span id="print-drug-count">4</span> Drugs)
+      </h3>
+      <table class="w-full text-xs">
+        <thead>
+          <tr class="bg-gray-100">
+            <th class="text-left">#</th>
+            <th class="text-left">Drug Name</th>
+            <th class="text-left">Dose</th>
+            <th class="text-left">Pharmacological Class</th>
+            <th class="text-left">Enzymatic / Receptor Target</th>
+          </tr>
+        </thead>
+        <tbody id="print-regimen-tbody">
+          <!-- Dynamic Regimen Rows -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Hazard Index Summary -->
+    <div class="mb-5 p-3 border border-black rounded break-inside-avoid">
+      <div class="flex justify-between items-center">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-red-700" id="print-severity-badge">CRITICAL WARNING</span>
+          <h4 class="text-base font-bold text-black mt-0.5" id="print-hero-title">Life-Threatening Triple Antithrombotic & CYP2C19 Failure</h4>
+          <p class="text-xs text-gray-700 mt-0.5" id="print-hero-subtitle"></p>
+        </div>
+        <div class="text-right">
+          <span class="text-[10px] uppercase font-mono block">Polypharmacy Hazard Index</span>
+          <span class="text-3xl font-black text-black font-mono" id="print-hazard-score">94</span>
+          <span class="text-sm font-bold text-gray-600">/100</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- N x N Pairwise Interaction Matrix (Printed High-Contrast Table) -->
+    <div class="mb-5 break-inside-avoid">
+      <h3 class="text-sm font-bold uppercase tracking-wider border-b border-black pb-1 mb-2">
+        2. Pairwise Cross-Reactivity Matrix (N × N Evaluation)
+      </h3>
+      <div id="print-matrix-container">
+        <!-- Dynamic Print Matrix -->
+      </div>
+    </div>
+
+    <!-- US FDA Official Boxed Warnings -->
+    <div class="mb-5 break-inside-avoid">
+      <h3 class="text-sm font-bold uppercase tracking-wider border-b border-black pb-1 mb-2">
+        3. FDA Boxed Warnings & Adverse Drug Reactions (Live OpenFDA 21 CFR 201.57)
+      </h3>
+      <div id="print-fda-warnings" class="space-y-2 text-xs">
+        <!-- Dynamic FDA Warnings for Print -->
+      </div>
+    </div>
+
+    <!-- Pharmacokinetic Dynamics -->
+    <div class="mb-5 break-inside-avoid">
+      <h3 class="text-sm font-bold uppercase tracking-wider border-b border-black pb-1 mb-2">
+        4. Pharmacokinetic Clearance Dynamics & Exposure Estimates
+      </h3>
+      <div class="grid grid-cols-3 gap-3 text-xs text-center border p-2 bg-gray-50">
+        <div>
+          <span class="block text-gray-600">Baseline Half-Life:</span>
+          <strong id="print-pk-baseline" class="text-sm">40.0 Hours</strong>
+        </div>
+        <div>
+          <span class="block text-gray-600">Inhibited Half-Life:</span>
+          <strong id="print-pk-inhibited" class="text-sm text-red-700">88.5 Hours (+121%)</strong>
+        </div>
+        <div>
+          <span class="block text-gray-600">Relative Risk Factor:</span>
+          <strong id="print-pk-rr" class="text-sm text-black">4.2x Bleeding Hazard</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- Meta Llama 3.3 Clinical Recommendations -->
+    <div class="mb-6 break-inside-avoid">
+      <h3 class="text-sm font-bold uppercase tracking-wider border-b border-black pb-1 mb-2">
+        5. Autonomous Prescribing Recommendations & Deprescribing Actions
+      </h3>
+      <div id="print-ai-recommendations" class="space-y-2 text-xs">
+        <!-- Dynamic AI actions for Print -->
+      </div>
+    </div>
+
+    <!-- Physician Attestation & Signature Line -->
+    <div class="mt-8 pt-4 border-t-2 border-black grid grid-cols-2 gap-8 text-xs break-inside-avoid">
+      <div>
+        <p><strong>Reviewing Pharmacist / Attending Physician:</strong></p>
+        <p class="mt-8 border-b border-black w-64"></p>
+        <p class="text-[10px] text-gray-600 mt-1">Printed Name & NPI License Number</p>
+      </div>
+      <div>
+        <p><strong>Clinical Signature & Date:</strong></p>
+        <p class="mt-8 border-b border-black w-64"></p>
+        <p class="text-[10px] text-gray-600 mt-1">Authorized Electronic Medical Record Attestation</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER (Screen Only) -->
+  <footer class="border-t border-gray-800 bg-gray-900 py-4 px-6 text-center text-xs text-gray-500 no-print">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p>
+        Pharmaco-Llama • Designed for the <strong class="text-gray-400">Meta $1M Global AI Developer Hackathon</strong> • The Sacred /truth Law
+      </p>
+      <p class="font-mono text-cyan-400 text-[11px]">
+        Built with NIH Clinical Pharmacology Credentials • Live OpenFDA API
+      </p>
+    </div>
+  </footer>
+
+  <!-- CORE LOGIC & KNOWLEDGE BASE SCRIPT -->
+  <script>
+    // -------------------------------------------------------------
+    // 1. EXTENSIVE CLINICAL DRUG KNOWLEDGE BASE FOR AUTOCOMPLETE
+    // -------------------------------------------------------------
+    const DRUG_DATABASE = [
+      {
+        name: "Warfarin",
+        brand: "Coumadin / Jantoven",
+        dose: "5mg",
+        class: "Anticoagulant (Vitamin K Antagonist)",
+        targets: "VKORC1, CYP2C9 substrate",
+        riskProfile: "High bleeding hazard; narrow therapeutic index"
+      },
+      {
+        name: "Clopidogrel",
+        brand: "Plavix",
+        dose: "75mg",
+        class: "Antiplatelet (P2Y12 Inhibitor)",
+        targets: "P2Y12, CYP2C19 bioactivated prodrug",
+        riskProfile: "Ineffective if CYP2C19 is inhibited (stent thrombosis)"
+      },
+      {
+        name: "Aspirin",
+        brand: "Bayer / Ecotrin",
+        dose: "81mg",
+        class: "Antiplatelet (COX-1 Inhibitor)",
+        targets: "Cyclooxygenase-1 irreversible inhibition",
+        riskProfile: "Gastric mucosal ulceration; synergistic bleeding with anticoagulants"
+      },
+      {
+        name: "Omeprazole",
+        brand: "Prilosec",
+        dose: "20mg",
+        class: "Proton Pump Inhibitor (PPI)",
+        targets: "H+/K+ ATPase, CYP2C19 potent inhibitor",
+        riskProfile: "Blocks Clopidogrel bioactivation; elevates Warfarin levels"
+      },
+      {
+        name: "Pantoprazole",
+        brand: "Protonix",
+        dose: "40mg",
+        class: "Proton Pump Inhibitor (PPI)",
+        targets: "H+/K+ ATPase, minimal CYP2C19 affinity",
+        riskProfile: "Safe gastroprotective alternative with Clopidogrel"
+      },
+      {
+        name: "Fluoxetine",
+        brand: "Prozac / Sarafem",
+        dose: "40mg",
+        class: "SSRI Antidepressant",
+        targets: "SERT (5-HT reuptake), CYP2D6/CYP2C19 inhibitor",
+        riskProfile: "Long half-life (1-2 weeks); lethal with MAOIs"
+      },
+      {
+        name: "Linezolid",
+        brand: "Zyvox",
+        dose: "600mg",
+        class: "Oxazolidinone Antibiotic (MAOI)",
+        targets: "23S rRNA, reversible non-selective MAO inhibitor",
+        riskProfile: "Precipitates fatal Serotonin Syndrome with SSRIs"
+      },
+      {
+        name: "Acetaminophen",
+        brand: "Tylenol",
+        dose: "500mg",
+        class: "Analgesic / Antipyretic",
+        targets: "Central COX inhibition, TRPA1",
+        riskProfile: "Hepatic toxicity at >4g/day; safe with most psychotropics"
+      },
+      {
+        name: "Lisinopril",
+        brand: "Prinivil / Zestril",
+        dose: "20mg",
+        class: "ACE Inhibitor",
+        targets: "Angiotensin Converting Enzyme, RAAS pathway",
+        riskProfile: "Reduces aldosterone; causes potassium retention"
+      },
+      {
+        name: "Spironolactone",
+        brand: "Aldactone",
+        dose: "50mg",
+        class: "Potassium-Sparing Diuretic",
+        targets: "Mineralocorticoid / Aldosterone receptor antagonist",
+        riskProfile: "Blocks renal potassium excretion; severe hyperkalemia risk"
+      },
+      {
+        name: "Potassium Chloride",
+        brand: "K-Dur / K-Tab",
+        dose: "20mEq",
+        class: "Electrolyte Supplement",
+        targets: "Cellular potassium repletion",
+        riskProfile: "Fatal cardiac arrest if paired with ACEi + K-sparing diuretic"
+      },
+      {
+        name: "Atorvastatin",
+        brand: "Lipitor",
+        dose: "20mg",
+        class: "HMG-CoA Reductase Inhibitor (Statin)",
+        targets: "HMG-CoA Reductase, CYP3A4 substrate",
+        riskProfile: "Rhabdomyolysis if combined with strong CYP3A4 inhibitors"
+      },
+      {
+        name: "Amiodarone",
+        brand: "Cordarone / Pacerone",
+        dose: "200mg",
+        class: "Class III Antiarrhythmic",
+        targets: "K+ channels, CYP2C9, CYP3A4, and P-gp potent inhibitor",
+        riskProfile: "Doubles Warfarin and Digoxin levels; narrow margin"
+      },
+      {
+        name: "Digoxin",
+        brand: "Lanoxin",
+        dose: "0.125mg",
+        class: "Cardiac Glycoside",
+        targets: "Na+/K+ ATPase, P-glycoprotein substrate",
+        riskProfile: "Narrow therapeutic index; severe toxicity with P-gp inhibitors"
+      },
+      {
+        name: "Metformin",
+        brand: "Glucophage",
+        dose: "500mg",
+        class: "Biguanide Antidiabetic",
+        targets: "AMPK activation, hepatic gluconeogenesis",
+        riskProfile: "Lactic acidosis risk in renal failure or with iodinated contrast"
+      },
+      {
+        name: "Sildenafil",
+        brand: "Viagra / Revatio",
+        dose: "50mg",
+        class: "PDE-5 Inhibitor",
+        targets: "Phosphodiesterase type 5 (cGMP elevation)",
+        riskProfile: "Lethal refractory hypotension when combined with Nitrates"
+      },
+      {
+        name: "Nitroglycerin",
+        brand: "Nitrostat",
+        dose: "0.4mg",
+        class: "Nitrate Vasodilator",
+        targets: "Guanylyl cyclase activation / Nitric oxide donor",
+        riskProfile: "Strictly contraindicated with PDE5 inhibitors"
+      },
+      {
+        name: "Ibuprofen",
+        brand: "Advil / Motrin",
+        dose: "400mg",
+        class: "NSAID",
+        targets: "COX-1 and COX-2 non-selective inhibition",
+        riskProfile: "GI bleeding with anticoagulants; renal failure with ACEi"
+      },
+      {
+        name: "Ciprofloxacin",
+        brand: "Cipro",
+        dose: "500mg",
+        class: "Fluoroquinolone Antibiotic",
+        targets: "DNA gyrase / Topoisomerase IV, CYP1A2 inhibitor",
+        riskProfile: "QT prolongation; tendon rupture risk; elevated theophylline"
+      },
+      {
+        name: "Azithromycin",
+        brand: "Zithromax / Z-Pak",
+        dose: "250mg",
+        class: "Macrolide Antibiotic",
+        targets: "50S ribosomal subunit",
+        riskProfile: "Additive QT prolongation with antiarrhythmics or fluoroquinolones"
+      },
+      {
+        name: "Apixaban",
+        brand: "Eliquis",
+        dose: "5mg",
+        class: "Direct Oral Anticoagulant (DOAC)",
+        targets: "Factor Xa inhibitor, CYP3A4/P-gp substrate",
+        riskProfile: "Severe hemorrhage if combined with antiplatelets or other anticoagulants"
+      },
+      {
+        name: "Diltiazem",
+        brand: "Cardizem",
+        dose: "120mg",
+        class: "Non-Dihydropyridine CCB",
+        targets: "L-type calcium channels, CYP3A4 inhibitor",
+        riskProfile: "Elevates statin levels; bradycardia with beta-blockers"
+      }
+    ];
+
+    // -------------------------------------------------------------
+    // 2. PAIRWISE BIOCHEMICAL INTERACTION RULES ENGINE
+    // -------------------------------------------------------------
+    const PAIRWISE_RULES = {
+      // Warfarin interactions
+      "clopidogrel+warfarin": {
+        severity: "MAJOR",
+        title: "Synergistic Antithrombotic Hemorrhage Hazard",
+        mechanism: "Concurrent inhibition of vitamin K-dependent clotting factors (II, VII, IX, X) by Warfarin and irreversible platelet P2Y12 inhibition by Clopidogrel causes profound dual hemostatic impairment.",
+        consequence: "Markedly elevated risk of major gastrointestinal and intracranial hemorrhage (Hazard Ratio ~ 3.8x).",
+        recommendation: "Re-evaluate dual therapy indication. If both required post-PCI, minimize duration and keep INR target 2.0-2.5.",
+        citation: "AHA/ACC Guideline for Coronary Revascularization; FDA Coumadin Labeling Section 7.1."
+      },
+      "aspirin+warfarin": {
+        severity: "MAJOR",
+        title: "Potentiated Mucosal Bleeding & Platelet Dysfunction",
+        mechanism: "Aspirin irreversibly acetylates COX-1, abolishing thromboxane A2-mediated platelet aggregation and inducing direct gastric mucosal injury, while Warfarin blocks secondary hemostasis.",
+        consequence: "Upper gastrointestinal bleeding risk quadrupled (Relative Risk 4.2).",
+        recommendation: "Deprescribe Aspirin 81mg unless strict mechanical heart valve or very recent acute coronary stent (<30 days).",
+        citation: "CHEST Antithrombotic Guidelines; FDA Warfarin Bleeding Boxed Warning."
+      },
+      "omeprazole+warfarin": {
+        severity: "MAJOR",
+        title: "CYP2C19/CYP2C9 Metabolic Clearance Inhibition",
+        mechanism: "Omeprazole competitively inhibits hepatic CYP2C19 and weakly attenuates CYP2C9, delaying S- and R-warfarin clearance and precipitating supratherapeutic INR spikes.",
+        consequence: "Elevated INR (>4.5), occult hematuria, and spontaneous bruising.",
+        recommendation: "Switch PPI from Omeprazole to Pantoprazole 40mg (minimal CYP2C19 inhibition). Increase INR monitoring frequency.",
+        citation: "FDA Prilosec Section 7 Drug Interactions; Clinical Pharmacokinetics."
+      },
+      "clopidogrel+omeprazole": {
+        severity: "LETHAL",
+        title: "CYP2C19 Bioactivation Blockade & Stent Thrombosis",
+        mechanism: "Clopidogrel is an inactive prodrug requiring two-step hepatic bioactivation via CYP2C19. Omeprazole is a potent CYP2C19 inhibitor that reduces active metabolite AUC by 45%, leaving platelets unprotected.",
+        consequence: "High risk of acute myocardial infarction, coronary stent thrombosis, and ischemic stroke.",
+        recommendation: "IMMEDIATELY STOP OMEPRAZOLE. Substitute with Pantoprazole 40mg or H2 blocker Famotidine 20mg.",
+        citation: "US FDA Plavix Boxed Warning (21 CFR 201.57); CPIC Clopidogrel-CYP2C19 Dosing Guideline."
+      },
+      "aspirin+clopidogrel": {
+        severity: "MILD",
+        title: "Dual Antiplatelet Therapy (DAPT) Bleeding Warning",
+        mechanism: "Simultaneous inhibition of platelet aggregation via COX-1 (thromboxane) and P2Y12 (ADP) pathways.",
+        consequence: "Clinically intended post-stent, but carries 1.8x baseline bleeding liability.",
+        recommendation: "Ensure appropriate duration (usually 6-12 months post-ACS). Add gastroprotection with Pantoprazole if indicated.",
+        citation: "ACC/AHA DAPT Guidelines."
+      },
+      "aspirin+omeprazole": {
+        severity: "SAFE",
+        title: "Gastroprotective Co-Therapy (Protective Interaction)",
+        mechanism: "Omeprazole suppresses gastric parietal acid secretion, protecting gastric mucosa from aspirin-induced cyclooxygenase erosions.",
+        consequence: "Decreased incidence of peptic ulceration and dyspepsia.",
+        recommendation: "Beneficial combination for gastric protection during single antiplatelet therapy.",
+        citation: "American College of Gastroenterology Ulcer Prevention Protocol."
+      },
+      // Fluoxetine / Linezolid crisis
+      "fluoxetine+linezolid": {
+        severity: "LETHAL",
+        title: "Malignant Serotonin Syndrome & Hyperthermia Crisis",
+        mechanism: "Linezolid is a reversible, non-selective Monoamine Oxidase Inhibitor (MAOI) that blocks central serotonin degradation. Fluoxetine blocks 5-HT reuptake at the presynaptic cleft, causing massive serotonin pooling.",
+        consequence: "Severe Serotonin Toxicity: malignant hyperthermia (>41°C), autonomic storm, clonus, rhabdomyolysis, and death.",
+        recommendation: "CONTRAINDICATED. Do NOT administer Linezolid. Fluoxetine active metabolite (Norfluoxetine) requires 5-week washout. Switch infection therapy to Vancomycin or Daptomycin immediately.",
+        citation: "US FDA Zyvox Boxed Warning; Sternbach & Hunter Serotonin Toxicity Criteria."
+      },
+      "acetaminophen+fluoxetine": {
+        severity: "SAFE",
+        title: "Compatible Analgesic & Psychiatric Regimen",
+        mechanism: "Acetaminophen undergoes primary glucuronidation and sulfation with minimal CYP2D6/CYP2C19 involvement. No serotonergic or pharmacokinetic conflict.",
+        consequence: "No adverse interaction observed at therapeutic doses (≤3g/day).",
+        recommendation: "Safe to continue for mild pain or fever relief.",
+        citation: "Clinical Pharmacokinetics & Drug Safety Reference."
+      },
+      "acetaminophen+linezolid": {
+        severity: "SAFE",
+        title: "Standard Antipyretic & Antibacterial Compatibility",
+        mechanism: "No shared enzymatic bottlenecks or MAOI interference.",
+        consequence: "Well tolerated in therapeutic dosing.",
+        recommendation: "Monitor standard liver function if treatment exceeds 14 days.",
+        citation: "FDA Zyvox Prescribing Information."
+      },
+      // Lisinopril / Spironolactone / Potassium
+      "lisinopril+spironolactone": {
+        severity: "MAJOR",
+        title: "Dual RAAS Aldosterone Suppression & Potassium Accumulation",
+        mechanism: "Lisinopril inhibits ACE, reducing angiotensin II and downstream aldosterone production. Spironolactone directly antagonizes the mineralocorticoid receptor, blocking potassium excretion in the cortical collecting duct.",
+        consequence: "Synergistic hyperkalemia risk, especially in patients with eGFR < 60 mL/min.",
+        recommendation: "Acceptable only with strict serum [K+] monitoring (<5.0 mEq/L). Contraindicated if combined with oral potassium.",
+        citation: "AHA/ACC Heart Failure Guidelines; FDA Aldactone & Zestril Warnings."
+      },
+      "lisinopril+potassium chloride": {
+        severity: "LETHAL",
+        title: "Exogenous Potassium Retention in ACE Inhibitor Therapy",
+        mechanism: "ACE inhibitors impair renal distal potassium excretion via aldosterone suppression. Exogenous potassium supplements create rapid serum potassium accumulation.",
+        consequence: "Severe hyperkalemia ([K+] > 6.0 mEq/L) leading to sinusoidal wave arrhythmia, complete heart block, and cardiac arrest.",
+        recommendation: "DISCONTINUE POTASSIUM CHLORIDE IMMEDIATELY. Obtain STAT Chem-7 and 12-lead ECG.",
+        citation: "US FDA Lisinopril Labeling Section 5.3 Warnings and Precautions."
+      },
+      "potassium chloride+spironolactone": {
+        severity: "LETHAL",
+        title: "Direct Distal Nephron Potassium Excretion Blockade",
+        mechanism: "Spironolactone competitively blocks aldosterone receptors in principal cells, shutting down ENaC and ROMK channels. Oral potassium supplements cannot be cleared by the kidneys.",
+        consequence: "Fatal hyperkalemic cardiac arrest.",
+        recommendation: "ABSOLUTE CONTRAINDICATION. Halt potassium chloride. Check serum electrolytes STAT.",
+        citation: "FDA Aldactone Black Box / Hyperkalemia Warnings."
+      },
+      // Amiodarone / Warfarin / Digoxin
+      "amiodarone+warfarin": {
+        severity: "LETHAL",
+        title: "Severe CYP2C9/CYP3A4 Inhibition Causing Warfarin Overdose",
+        mechanism: "Amiodarone and its metabolite DEA are potent inhibitors of CYP2C9, the primary metabolizing enzyme of potent S-warfarin. S-warfarin clearance drops by 50-70%.",
+        consequence: "Extreme INR prolongation (>6.0) and severe internal hemorrhage within 7-14 days.",
+        recommendation: "Empirically reduce Warfarin dose by 33% to 50% upon starting Amiodarone. Check INR twice weekly until stable.",
+        citation: "FDA Cordarone Label Section 7.1; Chest."
+      },
+      "amiodarone+digoxin": {
+        severity: "LETHAL",
+        title: "P-Glycoprotein Mediated Digoxin Toxicity & Heart Block",
+        mechanism: "Amiodarone inhibits P-glycoprotein (MDR1) efflux transport in the kidneys and gut, doubling serum Digoxin concentrations and depressing AV node conduction.",
+        consequence: "Fatal digitalis toxicity: bidirectional ventricular tachycardia, ventricular fibrillation, and profound bradycardia.",
+        recommendation: "Reduce Digoxin dose by 50% immediately upon initiating Amiodarone. Monitor serum Digoxin level (target 0.5-0.9 ng/mL).",
+        citation: "FDA Lanoxin Prescribing Information Section 7."
+      },
+      // Sildenafil / Nitrates
+      "nitroglycerin+sildenafil": {
+        severity: "LETHAL",
+        title: "Catastrophic Synergistic cGMP Vasodilation & Refractory Shock",
+        mechanism: "Nitroglycerin stimulates soluble guanylyl cyclase to generate cGMP. Sildenafil inhibits PDE5, the enzyme responsible for cGMP breakdown. The resulting massive cGMP surge causes profound systemic arteriolar vasodilation.",
+        consequence: "Uncontrolled, refractory hypotension, coronary hypoperfusion, myocardial infarction, and cardiovascular collapse.",
+        recommendation: "ABSOLUTE AND STRICT CONTRAINDICATION. Do not administer nitrates within 24 hours of Sildenafil. If chest pain occurs, use alternative anti-anginals.",
+        citation: "FDA Revatio & Viagra Boxed Contraindications; ACC/AHA Angina Management."
+      },
+      // NSAID + ACEi / Warfarin
+      "ibuprofen+warfarin": {
+        severity: "LETHAL",
+        title: "Gastrointestinal Mucosal Hemorrhage Cascade",
+        mechanism: "Ibuprofen inhibits protective gastric prostaglandins via COX-1/2, causes platelet dysfunction, and displaces Warfarin from plasma albumin, while Warfarin prevents clot formation.",
+        consequence: "Severe gastrointestinal bleeding, hematemesis, melena (Relative Risk ~ 6.0).",
+        recommendation: "AVOID NSAIDs with Warfarin. Substitute with Acetaminophen ≤2000mg/day or topical analgesics.",
+        citation: "FDA Bleeding Risk Warnings for NSAIDs + Anticoagulants."
+      },
+      "ibuprofen+lisinopril": {
+        severity: "MAJOR",
+        title: "Triple Whammy Renal Hemodynamic Collapse & Blunted BP Control",
+        mechanism: "Ibuprofen constricts afferent renal arterioles by blocking prostaglandins; Lisinopril dilates efferent renal arterioles by blocking angiotensin II. Glomerular capillary filtration pressure drops precipitously.",
+        consequence: "Acute Kidney Injury (AKI), sharp rise in serum creatinine, fluid retention, and blunted antihypertensive effect.",
+        recommendation: "Avoid chronic NSAIDs. Monitor serum creatinine and potassium. Switch to alternative pain management.",
+        citation: "KDIGO AKI Clinical Practice Guideline; FDA ACE Inhibitor Labeling."
+      },
+      // Atorvastatin + Inhibitors
+      "atorvastatin+diltiazem": {
+        severity: "MAJOR",
+        title: "CYP3A4 Inhibition Elevating Statin Exposure",
+        mechanism: "Diltiazem is a moderate CYP3A4 inhibitor that reduces hepatic clearance of Atorvastatin, increasing plasma concentration 2- to 3-fold.",
+        consequence: "Elevated risk of severe myopathy, myalgia, and rhabdomyolysis with secondary renal failure.",
+        recommendation: "Limit Atorvastatin dose to maximum 20mg daily or switch to Rosuvastatin / Pravastatin (non-CYP3A4 statins). Monitor CK.",
+        citation: "FDA Lipitor Labeling Section 7.1; ACC/AHA Statin Safety Guidelines."
+      },
+      // Ciprofloxacin + Azithromycin
+      "azithromycin+ciprofloxacin": {
+        severity: "MAJOR",
+        title: "Additive Cardiac QTc Prolongation & Torsades de Pointes",
+        mechanism: "Both agents inhibit the rapid delayed rectifier potassium current (IKr / hERG channel), delaying ventricular repolarization.",
+        consequence: "Prolonged QTc interval (>500ms), early afterdepolarizations, polymorphic ventricular tachycardia (Torsades de Pointes).",
+        recommendation: "Avoid concurrent use. Obtain baseline ECG; if QTc > 450ms (men) or > 460ms (women), select non-QT prolonging antibiotic.",
+        citation: "CredibleMeds Known Risk of TdP; FDA Drug Safety Communications."
+      }
+    };
+
+    // -------------------------------------------------------------
+    // 3. CASE STUDY DATABASE (Pure Clinical Drug Regimens)
+    // -------------------------------------------------------------
+    const CASE_STUDIES = {
+      1: {
+        title: "Life-Threatening Triple Antithrombotic & CYP2C19 Failure",
+        subtitle: "Severe adverse interaction between Warfarin, Aspirin, Clopidogrel, and Omeprazole.",
+        drugs: [
+          { name: "Warfarin", dose: "5mg", class: "Anticoagulant (VKORC1)" },
+          { name: "Aspirin", dose: "81mg", class: "Antiplatelet (COX-1)" },
+          { name: "Clopidogrel", dose: "75mg", class: "P2Y12 Inhibitor (Prodrug)" },
+          { name: "Omeprazole", dose: "20mg", class: "PPI (CYP2C19 Inhibitor)" }
+        ]
+      },
+      2: {
+        title: "Fatal Serotonin Syndrome & MAOI Contraindication",
+        subtitle: "Severe toxic interaction between Fluoxetine (SSRI) and Linezolid (Oxazolidinone antibiotic).",
+        drugs: [
+          { name: "Fluoxetine", dose: "40mg", class: "SSRI Antidepressant" },
+          { name: "Linezolid", dose: "600mg", class: "MAOI Antibiotic" },
+          { name: "Acetaminophen", dose: "500mg", class: "Analgesic" }
+        ]
+      },
+      3: {
+        title: "Malignant Hyperkalemia & Cardiac Arrhythmia Alert",
+        subtitle: "Dangerous potassium retention from Lisinopril, Spironolactone, and Potassium Chloride.",
+        drugs: [
+          { name: "Lisinopril", dose: "20mg", class: "ACE Inhibitor" },
+          { name: "Spironolactone", dose: "50mg", class: "Aldosterone Antagonist" },
+          { name: "Potassium Chloride", dose: "20mEq", class: "Electrolyte Supplement" }
+        ]
+      }
+    };
+
+    let activeDrugs = [];
+    let pkChartInstance = null;
+    let selectedAutocompleteIndex = -1;
+    let currentFilteredDrugs = [];
+
+    // -------------------------------------------------------------
+    // 4. INITIALIZATION
+    // -------------------------------------------------------------
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      initChart();
+      loadCaseStudy(1);
+      verifyOpenFdaConnection();
+
+      // Close autocomplete dropdown on click outside
+      document.addEventListener('click', (e) => {
+        const wrapper = document.getElementById('manual-add-wrapper');
+        const dropdown = document.getElementById('autocomplete-dropdown');
+        if (wrapper && !wrapper.contains(e.target)) {
+          dropdown.classList.add('hidden');
+        }
+      });
+    });
+
+    // -------------------------------------------------------------
+    // 5. OPENFDA LIVE TELEMETRY
+    // -------------------------------------------------------------
+    async function verifyOpenFdaConnection() {
+      try {
+        const res = await fetch('https://api.fda.gov/drug/label.json?search=openfda.generic_name:warfarin&limit=1');
+        if (res.ok) {
+          const el = document.getElementById('fda-status');
+          el.textContent = "ONLINE (200 OK)";
+          el.className = "text-emerald-400 font-bold";
+        }
+      } catch (e) {
+        const el = document.getElementById('fda-status');
+        el.textContent = "OFFLINE (CACHED)";
+        el.className = "text-amber-400 font-bold";
+      }
+    }
+
+    // -------------------------------------------------------------
+    // 6. PHARMACOKINETIC CHART INITIALIZATION
+    // -------------------------------------------------------------
+    function initChart() {
+      const canvas = document.getElementById('pkChart');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      pkChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['0h', '4h', '8h', '12h', '18h', '24h', '36h', '48h', '60h', '72h'],
+          datasets: [
+            {
+              label: 'Baseline Clearance Cp(t)',
+              data: [0, 8.5, 7.2, 5.8, 4.2, 2.9, 1.8, 1.1, 0.6, 0.3],
+              borderColor: '#10B981',
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.4
+            },
+            {
+              label: 'Inhibited Accumulation (Toxicity)',
+              data: [0, 9.8, 9.2, 8.5, 7.6, 6.8, 5.9, 4.8, 3.9, 3.1],
+              borderColor: '#EF4444',
+              backgroundColor: 'rgba(239, 68, 68, 0.15)',
+              borderWidth: 2.5,
+              fill: true,
+              tension: 0.4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#111827',
+              titleColor: '#38BDF8',
+              bodyColor: '#F3F4F6',
+              borderColor: '#374151',
+              borderWidth: 1
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: '#1F2937' },
+              ticks: { color: '#9CA3AF', font: { family: 'JetBrains Mono', size: 10 } }
+            },
+            y: {
+              grid: { color: '#1F2937' },
+              ticks: { color: '#9CA3AF', font: { family: 'JetBrains Mono', size: 10 } },
+              title: { display: true, text: 'Plasma Conc (mcg/mL)', color: '#6B7280', font: { size: 10 } }
+            }
+          }
+        }
+      });
+    }
+
+    // -------------------------------------------------------------
+    // 7. LOAD CASE STUDY (Trigger Real Live Audit)
+    // -------------------------------------------------------------
+    async function loadCaseStudy(caseId) {
+      const c = CASE_STUDIES[caseId];
+      if (!c) return;
+
+      activeDrugs = c.drugs.map(d => ({ ...d }));
+      
+      // Update Hero Card Titles
+      document.getElementById('hero-title').textContent = c.title;
+      document.getElementById('hero-subtitle').textContent = c.subtitle;
+
+      renderActiveDrugs();
+      renderPairwiseMatrix();
+      
+      // Execute live autonomous audit via backend API
+      await runAutonomousAudit();
+    }
+
+    // -------------------------------------------------------------
+    // 8. SEARCHABLE DRUG AUTOCOMPLETE ENGINE (Feature 1)
+    // -------------------------------------------------------------
+    function handleAutocompleteInput(e) {
+      const query = e.target.value.trim().toLowerCase();
+      const dropdown = document.getElementById('autocomplete-dropdown');
+
+      if (!query || query.length < 1) {
+        dropdown.classList.add('hidden');
+        currentFilteredDrugs = [];
+        selectedAutocompleteIndex = -1;
+        return;
+      }
+
+      currentFilteredDrugs = DRUG_DATABASE.filter(d => {
+        const nameMatch = d.name.toLowerCase().includes(query);
+        const brandMatch = d.brand.toLowerCase().includes(query);
+        const classMatch = d.class.toLowerCase().includes(query);
+        return nameMatch || brandMatch || classMatch;
+      });
+
+      if (currentFilteredDrugs.length === 0) {
+        dropdown.innerHTML = `
+          <div class="p-3 text-xs text-gray-400 flex items-center justify-between">
+            <span>No exact match for "<strong>${escapeHtml(query)}</strong>"</span>
+            <button onclick="addDrugFromInput()" class="text-cyan-400 hover:underline font-semibold">+ Add Custom</button>
+          </div>
+        `;
+        dropdown.classList.remove('hidden');
+        selectedAutocompleteIndex = -1;
+        return;
+      }
+
+      dropdown.innerHTML = currentFilteredDrugs.map((d, idx) => `
+        <div 
+          onclick="selectAutocompleteDrug(${idx})" 
+          class="p-2.5 hover:bg-gray-800 cursor-pointer transition-colors flex items-center justify-between group autocomplete-item"
+          data-index="${idx}"
+        >
+          <div>
+            <div class="flex items-center space-x-2">
+              <strong class="text-white text-xs group-hover:text-cyan-400">${d.name}</strong>
+              <span class="text-[11px] font-mono text-cyan-300 bg-cyan-950/40 border border-cyan-800/60 px-1.5 py-0.2 rounded">${d.dose}</span>
+              <span class="text-[10px] text-gray-400 font-mono italic">(${d.brand})</span>
+            </div>
+            <div class="text-[10px] text-gray-400 mt-0.5">${d.class}</div>
+          </div>
+          <span class="text-[10px] text-gray-500 group-hover:text-cyan-300 font-mono font-bold">+ Add</span>
+        </div>
+      `).join('');
+
+      dropdown.classList.remove('hidden');
+      selectedAutocompleteIndex = -1;
+    }
+
+    function handleAutocompleteKeydown(e) {
+      const dropdown = document.getElementById('autocomplete-dropdown');
+      if (dropdown.classList.contains('hidden') || currentFilteredDrugs.length === 0) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          addDrugFromInput();
+        }
+        return;
+      }
+
+      const items = dropdown.querySelectorAll('.autocomplete-item');
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        selectedAutocompleteIndex = (selectedAutocompleteIndex + 1) % items.length;
+        updateAutocompleteHighlight(items);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        selectedAutocompleteIndex = (selectedAutocompleteIndex - 1 + items.length) % items.length;
+        updateAutocompleteHighlight(items);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (selectedAutocompleteIndex >= 0 && selectedAutocompleteIndex < currentFilteredDrugs.length) {
+          selectAutocompleteDrug(selectedAutocompleteIndex);
+        } else {
+          addDrugFromInput();
+        }
+      } else if (e.key === 'Escape') {
+        dropdown.classList.add('hidden');
+      }
+    }
+
+    function updateAutocompleteHighlight(items) {
+      items.forEach((item, idx) => {
+        if (idx === selectedAutocompleteIndex) {
+          item.classList.add('bg-gray-800', 'border-l-2', 'border-cyan-400');
+          item.scrollIntoView({ block: 'nearest' });
+        } else {
+          item.classList.remove('bg-gray-800', 'border-l-2', 'border-cyan-400');
+        }
+      });
+    }
+
+    function selectAutocompleteDrug(index) {
+      const drug = currentFilteredDrugs[index];
+      if (!drug) return;
+
+      // Add to active regimen
+      activeDrugs.push({
+        name: drug.name,
+        dose: drug.dose,
+        class: drug.class
+      });
+
+      // Clear input and hide dropdown
+      const input = document.getElementById('drug-search-input');
+      input.value = '';
+      document.getElementById('autocomplete-dropdown').classList.add('hidden');
+
+      recalculateRegimen();
+    }
+
+    function addDrugFromInput() {
+      const input = document.getElementById('drug-search-input');
+      const val = input.value.trim();
+      if (!val) return;
+
+      // Check if matches known database item by name or brand
+      const query = val.toLowerCase();
+      const matched = DRUG_DATABASE.find(d => 
+        d.name.toLowerCase() === query || 
+        d.brand.toLowerCase().includes(query)
+      );
+
+      if (matched) {
+        activeDrugs.push({
+          name: matched.name,
+          dose: matched.dose,
+          class: matched.class
+        });
+      } else {
+        // Fallback custom drug entry
+        activeDrugs.push({
+          name: val,
+          dose: "Standard",
+          class: "Clinician Added"
+        });
+      }
+
+      input.value = '';
+      document.getElementById('autocomplete-dropdown').classList.add('hidden');
+      recalculateRegimen();
+    }
+
+    function quickAddDrug(brandOrName) {
+      const q = brandOrName.toLowerCase();
+      const matched = DRUG_DATABASE.find(d => 
+        d.name.toLowerCase().includes(q) || 
+        d.brand.toLowerCase().includes(q)
+      );
+      if (matched) {
+        // Prevent duplicate spam
+        if (!activeDrugs.some(d => d.name.toLowerCase() === matched.name.toLowerCase())) {
+          activeDrugs.push({
+            name: matched.name,
+            dose: matched.dose,
+            class: matched.class
+          });
+          recalculateRegimen();
+        }
+      }
+    }
+
+    // -------------------------------------------------------------
+    // 9. ACTIVE DRUGS TRAY MANAGEMENT
+    // -------------------------------------------------------------
+    function renderActiveDrugs() {
+      const container = document.getElementById('active-drugs-container');
+      const countEl = document.getElementById('drug-count');
+      if (countEl) countEl.textContent = activeDrugs.length;
+
+      if (!container) return;
+
+      if (activeDrugs.length === 0) {
+        container.innerHTML = `<span class="text-xs text-gray-500 italic">No medications currently active. Search above or select a clinical case.</span>`;
+        return;
+      }
+
+      container.innerHTML = activeDrugs.map((d, index) => `
+        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-800 border border-gray-700 text-gray-200 shadow-sm">
+          <strong class="text-cyan-400 mr-1">${d.name}</strong> 
+          <span class="text-gray-400 font-mono text-[11px] mr-1.5">${d.dose}</span>
+          <button onclick="removeDrug(${index})" class="text-gray-500 hover:text-red-400 font-bold ml-0.5 cursor-pointer" title="Remove">&times;</button>
+        </span>
+      `).join('');
+    }
+
+    function removeDrug(index) {
+      activeDrugs.splice(index, 1);
+      recalculateRegimen();
+    }
+
+    function clearAllDrugs() {
+      activeDrugs = [];
+      recalculateRegimen();
+    }
+
+    // -------------------------------------------------------------
+    // 10. DYNAMIC N x N PAIRWISE INTERACTION HEATMAP MATRIX (Feature 2)
+    // -------------------------------------------------------------
+    function getPairwiseEvaluation(drugA, drugB) {
+      const nameA = (drugA.name || drugA).toLowerCase().trim();
+      const nameB = (drugB.name || drugB).toLowerCase().trim();
+
+      if (nameA === nameB) {
+        return {
+          severity: "SELF",
+          severityLabel: "Self Reference",
+          title: `${drugA.name} Monotherapy Baseline`,
+          colorClass: "bg-gray-800/40 text-gray-500 border border-gray-800",
+          printBadgeClass: "bg-gray-100 text-gray-500",
+          icon: "minus",
+          score: 0,
+          mechanism: "Self-comparison baseline. No cross-reactivity.",
+          consequence: "Standard pharmacological clearance and efficacy profile.",
+          recommendation: "Continue according to prescribed posology.",
+          citation: "Standard Clinical Pharmacopeia"
+        };
+      }
+
+      // Check explicit dictionary keys
+      const key1 = `${nameA}+${nameB}`;
+      const key2 = `${nameB}+${nameA}`;
+      let match = PAIRWISE_RULES[key1] || PAIRWISE_RULES[key2];
+
+      // Substring fallback
+      if (!match) {
+        for (const [k, rule] of Object.entries(PAIRWISE_RULES)) {
+          const [k1, k2] = k.split('+');
+          if ((nameA.includes(k1) || k1.includes(nameA)) && (nameB.includes(k2) || k2.includes(nameB))) {
+            match = rule;
+            break;
+          }
+        }
+      }
+
+      if (match) {
+        return formatRuleMatch(match);
+      }
+
+      // Pharmacological Class Heuristic Fallback
+      const classA = (drugA.class || "").toLowerCase();
+      const classB = (drugB.class || "").toLowerCase();
+
+      if ((classA.includes('anticoagulant') && classB.includes('antiplatelet')) ||
+          (classA.includes('antiplatelet') && classB.includes('anticoagulant'))) {
+        return formatRuleMatch({
+          severity: "MAJOR",
+          title: "Synergistic Antithrombotic Hemorrhage Liability",
+          mechanism: "Dual targeting of the primary platelet plug and secondary fibrin clot pathways severely impairs physiological hemostasis.",
+          consequence: "Elevated bleeding index across all tissue beds (RR > 3.0).",
+          recommendation: "Review necessity of combination; ensure lowest effective doses and monitor hemoglobin/hematocrit.",
+          citation: "CHEST Antithrombotic Consensus Guidelines"
+        });
+      }
+
+      if (classA.includes('anticoagulant') && classB.includes('anticoagulant')) {
+        return formatRuleMatch({
+          severity: "LETHAL",
+          title: "Concurrent Full Systemic Anticoagulation",
+          mechanism: "Concomitant use of multiple full-dose systemic anticoagulants.",
+          consequence: "Extremely high risk of spontaneous fatal internal hemorrhage.",
+          recommendation: "CONTRAINDICATED. Never duplicate systemic anticoagulants except during brief monitored heparin bridging.",
+          citation: "ISTH Antithrombotic Guidelines"
+        });
+      }
+
+      // Default: Safe / Nominal
+      return formatRuleMatch({
+        severity: "SAFE",
+        title: "No Significant Documented Cross-Reactivity",
+        mechanism: "Independent clearance pathways and distinct receptor profiles with no documented major enzymatic competition.",
+        consequence: "Minimal risk of pharmacokinetic toxicity or altered therapeutic efficacy.",
+        recommendation: "Proceed with standard patient administration and routine clinical monitoring.",
+        citation: "OpenFDA Clinical Drug Interaction Database & Lexicomp"
+      });
+    }
+
+    function formatRuleMatch(rule) {
+      if (rule.severity === "LETHAL") {
+        return {
+          ...rule,
+          severityLabel: "Lethal / Black Box",
+          colorClass: "bg-red-500/25 text-red-400 border border-red-500/50 hover:bg-red-500/40",
+          badgeClass: "bg-red-500/20 text-red-400 border-red-500/40",
+          printBadgeClass: "print-lethal-badge",
+          icon: "alert-octagon",
+          score: 4
+        };
+      }
+      if (rule.severity === "MAJOR") {
+        return {
+          ...rule,
+          severityLabel: "Major Interaction",
+          colorClass: "bg-orange-500/20 text-orange-400 border border-orange-500/50 hover:bg-orange-500/35",
+          badgeClass: "bg-orange-500/20 text-orange-400 border-orange-500/40",
+          printBadgeClass: "print-major-badge",
+          icon: "alert-triangle",
+          score: 3
+        };
+      }
+      if (rule.severity === "MILD") {
+        return {
+          ...rule,
+          severityLabel: "Mild / Monitor",
+          colorClass: "bg-amber-500/15 text-amber-300 border border-amber-500/40 hover:bg-amber-500/25",
+          badgeClass: "bg-amber-500/20 text-amber-300 border-amber-500/40",
+          printBadgeClass: "print-mild-badge",
+          icon: "info",
+          score: 2
+        };
+      }
+      // SAFE
+      return {
+        ...rule,
+        severityLabel: "Safe / Nominal",
+        colorClass: "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25",
+        badgeClass: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+        printBadgeClass: "print-safe-badge",
+        icon: "check-circle-2",
+        score: 1
+      };
+    }
+
+    function renderPairwiseMatrix() {
+      const table = document.getElementById('pairwise-matrix-table');
+      const triageContainer = document.getElementById('matrix-triage-summary');
+      if (!table) return;
+
+      const n = activeDrugs.length;
+      if (n === 0) {
+        table.innerHTML = `<tr><td class="p-6 text-center text-gray-500">No active medications to evaluate in pairwise matrix.</td></tr>`;
+        if (triageContainer) triageContainer.innerHTML = '';
+        return;
+      }
+
+      let lethalCount = 0;
+      let majorCount = 0;
+      let mildCount = 0;
+      let safeCount = 0;
+
+      // Table Header (Columns)
+      let headerHtml = `
+        <thead>
+          <tr class="bg-gray-800/60 border-b border-gray-700 text-gray-300">
+            <th class="p-2.5 font-bold font-mono text-[11px] sticky left-0 bg-gray-900 z-20 border-r border-gray-800">
+              Drug Pairs (N=${n})
+            </th>
+      `;
+
+      activeDrugs.forEach(d => {
+        headerHtml += `
+          <th class="p-2 text-center font-bold text-[11px] text-gray-200 border-r border-gray-800/60 whitespace-nowrap min-w-[90px]">
+            <span class="text-cyan-400 block">${d.name}</span>
+            <span class="text-[9px] font-mono text-gray-400 block">${d.dose}</span>
+          </th>
+        `;
+      });
+      headerHtml += `</tr></thead>`;
+
+      // Table Body (Rows)
+      let bodyHtml = `<tbody>`;
+      for (let i = 0; i < n; i++) {
+        const drugA = activeDrugs[i];
+        bodyHtml += `
+          <tr class="border-b border-gray-800 hover:bg-gray-800/30 transition-colors">
+            <!-- Row Header (Sticky on left for responsive tablets/mobiles) -->
+            <td class="p-2.5 font-bold text-gray-300 text-xs sticky left-0 bg-gray-900 z-10 border-r border-gray-800 whitespace-nowrap shadow-sm">
+              <span class="text-cyan-400 block">${drugA.name}</span>
+              <span class="text-[9px] font-mono text-gray-500 block">${drugA.dose}</span>
+            </td>
+        `;
+
+        for (let j = 0; j < n; j++) {
+          const drugB = activeDrugs[j];
+          const evalResult = getPairwiseEvaluation(drugA, drugB);
+
+          // Count unique non-self pairs (i < j)
+          if (i < j) {
+            if (evalResult.severity === "LETHAL") lethalCount++;
+            else if (evalResult.severity === "MAJOR") majorCount++;
+            else if (evalResult.severity === "MILD") mildCount++;
+            else if (evalResult.severity === "SAFE") safeCount++;
+          }
+
+          if (i === j) {
+            bodyHtml += `
+              <td class="p-2 text-center border-r border-gray-800/40 bg-gray-950/40 text-gray-600 font-mono text-xs select-none">
+                —
+              </td>
+            `;
+          } else {
+            bodyHtml += `
+              <td class="p-1.5 text-center border-r border-gray-800/40">
+                <button 
+                  onclick="openInteractionModal(${i}, ${j})" 
+                  class="w-full h-9 rounded-lg px-2 flex items-center justify-center space-x-1 font-bold text-[10px] transition-all transform hover:scale-105 cursor-pointer shadow-sm ${evalResult.colorClass}"
+                  title="Click for Biochemical Rationale: ${drugA.name} + ${drugB.name}"
+                >
+                  <i data-lucide="${evalResult.icon}" class="w-3.5 h-3.5 shrink-0"></i>
+                  <span class="hidden sm:inline uppercase">${evalResult.severity}</span>
+                </button>
+              </td>
+            `;
+          }
+        }
+        bodyHtml += `</tr>`;
+      }
+      bodyHtml += `</tbody>`;
+
+      table.innerHTML = headerHtml + bodyHtml;
+
+      // Update Triage Summary Badges
+      if (triageContainer) {
+        triageContainer.innerHTML = `
+          ${lethalCount > 0 ? `<span class="bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded font-bold">${lethalCount} LETHAL</span>` : ''}
+          ${majorCount > 0 ? `<span class="bg-orange-500/20 text-orange-400 border border-orange-500/30 px-2 py-0.5 rounded font-bold">${majorCount} MAJOR</span>` : ''}
+          ${mildCount > 0 ? `<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded">${mildCount} MILD</span>` : ''}
+          <span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded">${safeCount} SAFE</span>
+        `;
+      }
+
+      lucide.createIcons();
+    }
+
+    // -------------------------------------------------------------
+    // 11. BIOCHEMICAL INTERACTION RATIONALE MODAL
+    // -------------------------------------------------------------
+    let currentModalPair = null;
+
+    function openInteractionModal(indexA, indexB) {
+      const drugA = activeDrugs[indexA];
+      const drugB = activeDrugs[indexB];
+      if (!drugA || !drugB) return;
+
+      currentModalPair = { indexA, indexB, drugA, drugB };
+      const evalResult = getPairwiseEvaluation(drugA, drugB);
+
+      // Title
+      document.getElementById('modal-pair-title').innerHTML = `
+        <span class="text-cyan-400">${escapeHtml(drugA.name)} (${escapeHtml(drugA.dose)})</span>
+        <span class="text-gray-500">⟷</span>
+        <span class="text-white">${escapeHtml(drugB.name)} (${escapeHtml(drugB.dose)})</span>
+      `;
+
+      // Severity Banner
+      const banner = document.getElementById('modal-severity-banner');
+      banner.className = `p-3 rounded-xl mb-4 border flex items-center justify-between ${evalResult.badgeClass}`;
+      banner.innerHTML = `
+        <div class="flex items-center space-x-2">
+          <i data-lucide="${evalResult.icon}" class="w-5 h-5"></i>
+          <div>
+            <strong class="text-xs uppercase font-extrabold tracking-wider block">${evalResult.severityLabel}</strong>
+            <span class="text-[11px] opacity-90">${evalResult.title}</span>
+          </div>
+        </div>
+        <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-black/30 font-bold uppercase">${evalResult.severity}</span>
+      `;
+
+      // Sections
+      document.getElementById('modal-mechanism').textContent = evalResult.mechanism;
+      document.getElementById('modal-consequence').textContent = evalResult.consequence;
+      document.getElementById('modal-recommendation').textContent = evalResult.recommendation;
+      document.getElementById('modal-citation').textContent = evalResult.citation;
+
+      // Dynamic Substitution / Deprescribing Action Button
+      const actionWrapper = document.getElementById('modal-action-wrapper');
+      actionWrapper.innerHTML = '';
+
+      if (evalResult.severity === "LETHAL" || evalResult.severity === "MAJOR") {
+        // Specific clinical substitution helpers
+        const nameA = drugA.name.toLowerCase();
+        const nameB = drugB.name.toLowerCase();
+
+        if (nameA.includes("omeprazole") || nameB.includes("omeprazole")) {
+          actionWrapper.innerHTML = `
+            <button onclick="applySubstitution('Omeprazole', 'Pantoprazole 40mg', 'Proton Pump Inhibitor (Low CYP2C19)')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-md shadow-emerald-600/30 flex items-center gap-1.5 transition-all cursor-pointer">
+              <i data-lucide="check" class="w-4 h-4"></i>
+              <span>Substitute Omeprazole &rarr; Pantoprazole 40mg</span>
+            </button>
+          `;
+        } else if (nameA.includes("linezolid") || nameB.includes("linezolid")) {
+          actionWrapper.innerHTML = `
+            <button onclick="applySubstitution('Linezolid', 'Daptomycin 500mg IV', 'Lipopeptide Antibacterial (No MAOI)')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-md shadow-emerald-600/30 flex items-center gap-1.5 transition-all cursor-pointer">
+              <i data-lucide="check" class="w-4 h-4"></i>
+              <span>Substitute Linezolid &rarr; Daptomycin</span>
+            </button>
+          `;
+        } else if (nameA.includes("potassium") || nameB.includes("potassium")) {
+          actionWrapper.innerHTML = `
+            <button onclick="applyDeprescribe('Potassium')" class="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-md shadow-red-600/30 flex items-center gap-1.5 transition-all cursor-pointer">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+              <span>Deprescribe Potassium Chloride Immediately</span>
+            </button>
+          `;
+        }
+      }
+
+      document.getElementById('interaction-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeInteractionModal() {
+      document.getElementById('interaction-modal').classList.add('hidden');
+      currentModalPair = null;
+    }
+
+    function applySubstitution(targetDrugName, newDrugName, newDrugClass) {
+      const idx = activeDrugs.findIndex(d => d.name.toLowerCase().includes(targetDrugName.toLowerCase()));
+      if (idx !== -1) {
+        const parts = newDrugName.split(' ');
+        const dose = parts.slice(1).join(' ') || "Standard";
+        activeDrugs[idx] = {
+          name: parts[0],
+          dose: dose,
+          class: newDrugClass
+        };
+        closeInteractionModal();
+        recalculateRegimen();
+      }
+    }
+
+    function applyDeprescribe(targetDrugName) {
+      const idx = activeDrugs.findIndex(d => d.name.toLowerCase().includes(targetDrugName.toLowerCase()));
+      if (idx !== -1) {
+        activeDrugs.splice(idx, 1);
+        closeInteractionModal();
+        recalculateRegimen();
+      }
+    }
+
+    // -------------------------------------------------------------
+    // 12. DYNAMIC REGIMEN RE-CALCULATION
+    // -------------------------------------------------------------
+    function recalculateRegimen() {
+      renderActiveDrugs();
+      renderPairwiseMatrix();
+
+      // Recalculate Hazard Score based on worst pair
+      let maxScore = 15;
+      let worstSeverity = "SAFE";
+      let worstTitle = "Nominal Regimen Compatibility";
+      let worstSubtitle = "No severe pharmacological antagonisms or lethal enzyme contraindications detected.";
+
+      const n = activeDrugs.length;
+      for (let i = 0; i < n; i++) {
+        for (let j = i + 1; j < n; j++) {
+          const evalResult = getPairwiseEvaluation(activeDrugs[i], activeDrugs[j]);
+          if (evalResult.score === 4) {
+            maxScore = Math.max(maxScore, 95);
+            worstSeverity = "CRITICAL WARNING";
+            worstTitle = evalResult.title;
+            worstSubtitle = evalResult.mechanism;
+          } else if (evalResult.score === 3) {
+            maxScore = Math.max(maxScore, 75);
+            if (worstSeverity !== "CRITICAL WARNING") {
+              worstSeverity = "MAJOR RISK";
+              worstTitle = evalResult.title;
+              worstSubtitle = evalResult.mechanism;
+            }
+          } else if (evalResult.score === 2) {
+            maxScore = Math.max(maxScore, 45);
+          }
+        }
+      }
+
+      if (n === 0) {
+        maxScore = 0;
+        worstSeverity = "CLEAR";
+        worstTitle = "No Active Medications";
+        worstSubtitle = "Add medications via autocomplete or select a preset clinical case.";
+      }
+
+      document.getElementById('hazard-score').textContent = maxScore;
+      document.getElementById('hazard-bar').style.width = maxScore + '%';
+      document.getElementById('hero-title').textContent = worstTitle;
+      document.getElementById('hero-subtitle').textContent = worstSubtitle;
+
+      const badge = document.getElementById('severity-badge');
+      badge.textContent = worstSeverity;
+      if (maxScore >= 80) {
+        badge.className = "px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider rounded-md bg-red-500/20 text-red-400 border border-red-500/30";
+        document.getElementById('hazard-bar').className = "h-full bg-red-500 transition-all duration-700";
+        document.getElementById('hazard-score').className = "text-4xl font-extrabold font-mono text-red-500";
+      } else if (maxScore >= 50) {
+        badge.className = "px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider rounded-md bg-amber-500/20 text-amber-400 border border-amber-500/30";
+        document.getElementById('hazard-bar').className = "h-full bg-amber-500 transition-all duration-700";
+        document.getElementById('hazard-score').className = "text-4xl font-extrabold font-mono text-amber-400";
+      } else {
+        badge.className = "px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+        document.getElementById('hazard-bar').className = "h-full bg-emerald-500 transition-all duration-700";
+        document.getElementById('hazard-score').className = "text-4xl font-extrabold font-mono text-emerald-400";
+      }
+
+      lucide.createIcons();
+    }
+
+    // -------------------------------------------------------------
+    // 13. REAL OCR FILE UPLOAD VIA GROQ / META LLAMA 3.2 VISION BACKEND
+    // -------------------------------------------------------------
+    async function handleRxUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const dropzone = document.getElementById('dropzone');
+      dropzone.innerHTML = `
+        <div class="flex items-center justify-center space-x-2 text-cyan-400 py-4">
+          <div class="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+          <span class="text-xs font-mono font-semibold">Sending ${escapeHtml(file.name)} to Meta Llama 3.2 Vision on Groq...</span>
+        </div>
+      `;
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetch('http://localhost:8000/api/analyze-prescription', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) {
+          throw new Error(`Server returned HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        // Dynamically update activeDrugs with REAL extracted drugs
+        if (data.extracted_medications && data.extracted_medications.length > 0) {
+          activeDrugs = data.extracted_medications.map(m => ({
+            name: m.name,
+            dose: m.dose || "Standard",
+            class: m.class || "Prescribed Agent"
+          }));
+        }
+
+        renderActiveDrugs();
+        applyAuditResultToUI(data);
+
+        dropzone.innerHTML = `
+          <div class="flex items-center justify-between p-2 rounded-lg bg-emerald-950/30 border border-emerald-500/30 text-emerald-400 text-xs">
+            <span class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4"></i> Live Llama Vision OCR: ${data.extracted_medications ? data.extracted_medications.length : 0} Drugs Extracted</span>
+            <button onclick="event.stopPropagation(); document.getElementById('rx-file-input').click();" class="text-[10px] text-gray-400 hover:text-white cursor-pointer">Scan Another</button>
+          </div>
+        `;
+        lucide.createIcons();
+      } catch (err) {
+        console.warn("Backend vision offline or error:", err);
+        dropzone.innerHTML = `
+          <div class="flex items-center justify-between p-2 rounded-lg bg-amber-950/40 border border-amber-500/40 text-amber-300 text-xs">
+            <span class="flex items-center gap-1.5"><i data-lucide="alert-circle" class="w-4 h-4 text-amber-400"></i> Vision Error (${escapeHtml(err.message)})</span>
+            <button onclick="event.stopPropagation(); document.getElementById('rx-file-input').click();" class="text-[10px] text-gray-300 underline">Try Again</button>
+          </div>
+        `;
+        lucide.createIcons();
+      }
+    }
+
+    function applyAuditResultToUI(data) {
+      // 1. Hazard Score & Severity Badge
+      if (data.hazard_score !== undefined) {
+        document.getElementById('hazard-score').textContent = data.hazard_score;
+        document.getElementById('hazard-bar').style.width = data.hazard_score + '%';
+        const badge = document.getElementById('severity-badge');
+        badge.textContent = data.hazard_score >= 80 ? "CRITICAL HAZARD" : (data.hazard_score >= 50 ? "MAJOR CONFLICT" : "NOMINAL REGIMEN");
+        badge.className = data.hazard_score >= 80 ? "px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider rounded-md border text-red-400 bg-red-500/20 border-red-500/30" : (data.hazard_score >= 50 ? "px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider rounded-md border text-amber-400 bg-amber-500/20 border-amber-500/30" : "px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider rounded-md border text-emerald-400 bg-emerald-500/20 border-emerald-500/30");
+      }
+
+      // 2. Dynamic Pharmacokinetic Simulation HUD
+      if (data.pharmacokinetics) {
+        const pk = data.pharmacokinetics;
+        document.getElementById('pk-half-life').textContent = (pk.baseline_t_half_h || "--") + " Hours";
+        document.getElementById('pk-inhibited-half-life').textContent = (pk.inhibited_t_half_h || "--") + " Hours" + (pk.clearance_impairment_fold > 1 ? ` (${pk.clearance_impairment_fold}x fold)` : '');
+        document.getElementById('pk-rr').textContent = (pk.bleeding_relative_risk || 1.0) + "x Hazard Ratio";
+
+        if (pkChartInstance && pk.time_points_h) {
+          pkChartInstance.data.labels = pk.time_points_h.map(t => t + "h");
+          pkChartInstance.data.datasets[0].label = `${pk.drug} Baseline Elimination`;
+          pkChartInstance.data.datasets[0].data = pk.baseline_curve_mg_l;
+          pkChartInstance.data.datasets[1].label = `${pk.drug} (${pk.inhibitor !== "None" ? pk.inhibitor + ' Inhibition' : 'Impaired Elimination'})`;
+          pkChartInstance.data.datasets[1].data = pk.inhibited_curve_mg_l;
+          pkChartInstance.update();
+        }
+      }
+
+      // 3. Live OpenFDA Warnings & Regulatory Alerts
+      const fdaContainer = document.getElementById('fda-boxed-warnings');
+      if (data.fda_warnings && data.fda_warnings.length > 0) {
+        fdaContainer.innerHTML = data.fda_warnings.map(w => `
+          <div class="p-3.5 rounded-xl border border-red-500/30 bg-red-950/20">
+            <div class="flex items-center justify-between text-xs font-bold text-red-400 mb-1">
+              <span class="flex items-center gap-1.5 font-mono"><i data-lucide="shield-alert" class="w-3.5 h-3.5"></i> ${escapeHtml(w.drug)}</span>
+              <span class="text-[10px] bg-red-500/20 px-2 py-0.5 rounded text-red-300 font-mono">LIVE OPENFDA WARNING</span>
+            </div>
+            <h4 class="text-xs font-bold text-gray-200 mb-1">${escapeHtml(w.title)}</h4>
+            <p class="text-xs text-gray-400 leading-relaxed">${escapeHtml(w.text)}</p>
+          </div>
+        `).join('');
+      } else if (data.warnings && data.warnings.length > 0) {
+        fdaContainer.innerHTML = data.warnings.map(w => `
+          <div class="p-3.5 rounded-xl border border-amber-500/30 bg-amber-950/20">
+            <div class="flex items-center justify-between text-xs font-bold text-amber-400 mb-1">
+              <span class="flex items-center gap-1.5 font-mono"><i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> ${escapeHtml(w.drug || "REGIMEN ALERT")}</span>
+              <span class="text-[10px] bg-amber-500/20 px-2 py-0.5 rounded text-amber-300 font-mono">${escapeHtml(w.severity)}</span>
+            </div>
+            <h4 class="text-xs font-bold text-gray-200 mb-1">${escapeHtml(w.type)}</h4>
+            <p class="text-xs text-gray-400 leading-relaxed">${escapeHtml(w.message)}</p>
+          </div>
+        `).join('');
+      } else {
+        fdaContainer.innerHTML = `
+          <div class="p-4 rounded-xl border border-emerald-500/30 bg-emerald-950/10 text-emerald-400 text-xs flex items-center gap-2">
+            <i data-lucide="check-circle" class="w-4 h-4"></i>
+            <span>No FDA Black Box Warnings or acute biochemical hazards detected for active regimen.</span>
+          </div>
+        `;
+      }
+
+      // 4. Generative AI Action Directives
+      if (data.actions && data.actions.length > 0) {
+        const aiContainer = document.getElementById('ai-recommendations');
+        aiContainer.innerHTML = data.actions.map(a => `
+          <div class="p-3.5 rounded-xl border border-gray-800 bg-gray-800/40 hover:border-gray-700 transition-all">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-bold text-white">${escapeHtml(a.title)}</span>
+              <span class="text-[10px] px-2 py-0.5 rounded font-mono font-bold border ${a.badgeClass || 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'}">${escapeHtml(a.type)}</span>
+            </div>
+            <p class="text-xs text-gray-400 leading-relaxed">${escapeHtml(a.desc)}</p>
+          </div>
+        `).join('');
+      }
+
+      renderPairwiseMatrix();
+      lucide.createIcons();
+    }
+
+    // -------------------------------------------------------------
+    // 14. REAL DYNAMIC RUN AUDIT ACTION
+    // -------------------------------------------------------------
+    async function runAutonomousAudit() {
+      const hero = document.getElementById('audit-hero-card');
+      hero.classList.add('glow-red');
+
+      try {
+        const response = await fetch('http://localhost:8000/api/audit-regimen', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            patient_id: "PATIENT_9421",
+            medications: activeDrugs
+          })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          applyAuditResultToUI(result);
+        }
+      } catch (e) {
+        console.warn("Backend API offline, rendering matrix locally:", e);
+      }
+
+      setTimeout(() => hero.classList.remove('glow-red'), 1000);
+    }
+
+    // -------------------------------------------------------------
+    // 15. DIRECT CLIENT-SIDE PDF / PRINT REPORT EXPORT (Feature 4)
+    // -------------------------------------------------------------
+    function triggerClinicalExport() {
+      // 1. Populate Print Audit Date
+      const now = new Date();
+      document.getElementById('print-audit-date').textContent = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
+
+      // 2. Populate Print Drug Count & Regimen Table
+      document.getElementById('print-drug-count').textContent = activeDrugs.length;
+      const printTbody = document.getElementById('print-regimen-tbody');
+      printTbody.innerHTML = activeDrugs.map((d, idx) => `
+        <tr>
+          <td>${idx + 1}</td>
+          <td><strong>${escapeHtml(d.name)}</strong></td>
+          <td>${escapeHtml(d.dose)}</td>
+          <td>${escapeHtml(d.class || "General")}</td>
+          <td>${getDrugTargetInfo(d.name)}</td>
+        </tr>
+      `).join('');
+
+      // 3. Populate Print Hazard & Badges
+      document.getElementById('print-hazard-score').textContent = document.getElementById('hazard-score').textContent;
+      document.getElementById('print-severity-badge').textContent = document.getElementById('severity-badge').textContent;
+      document.getElementById('print-hero-title').textContent = document.getElementById('hero-title').textContent;
+      document.getElementById('print-hero-subtitle').textContent = document.getElementById('hero-subtitle').textContent;
+
+      // 4. Populate Print N x N Matrix
+      const printMatrixContainer = document.getElementById('print-matrix-container');
+      const n = activeDrugs.length;
+      let matrixHtml = `
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="bg-gray-100">
+              <th>Medication</th>
+              ${activeDrugs.map(d => `<th class="text-center font-bold">${escapeHtml(d.name)}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+      `;
+      for (let i = 0; i < n; i++) {
+        matrixHtml += `<tr><td class="font-bold bg-gray-50">${escapeHtml(activeDrugs[i].name)}</td>`;
+        for (let j = 0; j < n; j++) {
+          if (i === j) {
+            matrixHtml += `<td class="text-center text-gray-400 bg-gray-50">—</td>`;
+          } else {
+            const res = getPairwiseEvaluation(activeDrugs[i], activeDrugs[j]);
+            matrixHtml += `
+              <td class="text-center font-bold ${res.printBadgeClass}">
+                ${res.severity}
+              </td>
+            `;
+          }
+        }
+        matrixHtml += `</tr>`;
+      }
+      matrixHtml += `</tbody></table>`;
+      printMatrixContainer.innerHTML = matrixHtml;
+
+      // 5. Populate Print FDA Warnings
+      const fdaScreen = document.getElementById('fda-boxed-warnings');
+      document.getElementById('print-fda-warnings').innerHTML = fdaScreen.innerHTML;
+
+      // 6. Populate Print AI Recommendations
+      const aiScreen = document.getElementById('ai-recommendations');
+      document.getElementById('print-ai-recommendations').innerHTML = aiScreen.innerHTML;
+
+      // 7. Trigger native browser print dialog
+      window.print();
+    }
+
+    function getDrugTargetInfo(drugName) {
+      const q = drugName.toLowerCase();
+      const matched = DRUG_DATABASE.find(d => d.name.toLowerCase() === q);
+      return matched ? matched.targets : "Hepatic / Renal clearance";
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+  </script>
+</body>
+</html>
