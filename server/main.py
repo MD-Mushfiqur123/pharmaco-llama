@@ -29,7 +29,17 @@ from molecular_engine import calculate_molecular_compatibility, compute_smiles_d
 from pubmed_evidence import fetch_pubmed_evidence
 from vision_ocr_engine import parse_clinical_prescription_text
 
+# Enterprise Clinical Decision Support & Population PK Engines
+from cpic_engine import CPICGuidelineEngine
+from population_pk import PopulationPKSimulator
+from ddgi_phenoconversion import PhenoconversionEngine
+from clinical_decision_support import ClinicalDecisionSupportEngine
+
 pgx_engine = PharmacogenomicsEngine()
+cpic_engine = CPICGuidelineEngine()
+poppk_sim = PopulationPKSimulator()
+pheno_engine = PhenoconversionEngine()
+cdss_engine = ClinicalDecisionSupportEngine()
 
 app = FastAPI(
     title="Pharmaco-Llama Clinical API",
@@ -340,6 +350,22 @@ def audit_regimen(request: PolypharmacyAuditRequest):
                 if m_res.get("status") == "COMPUTED":
                     molecular_evals.append(m_res)
 
+    # 7. Geriatric Beers Criteria (2023) & Anticholinergic Cognitive Burden (ACB)
+    patient_age = request.age or 65
+    beers_pims = cdss_engine.evaluate_geriatric_beers(patient_age, med_names)
+    acb_assessment = cdss_engine.calculate_anticholinergic_burden(med_names)
+    renal_kdigo = cdss_engine.evaluate_renal_appropriateness(request.egfr or 90.0, med_names)
+
+    # 8. CPIC Guideline Level A Rules & DDGI Phenoconversion
+    cpic_alerts = []
+    phenoconversion_events = []
+    if request.patient_genotype:
+        cpic_alerts = cpic_engine.scan_regimen_cpic(request.patient_genotype, med_names)
+        for g, pheno in request.patient_genotype.items():
+            conv = pheno_engine.calculate_effective_phenotype(g, pheno, med_names)
+            if conv["is_phenoconverted"]:
+                phenoconversion_events.append(conv)
+
     return {
         "hazard_score": hazard_score,
         "medication_count": len(request.medications),
@@ -351,7 +377,12 @@ def audit_regimen(request: PolypharmacyAuditRequest):
         "pharmacogenomics": pgx_result,
         "tdc_ddi_hits": tdc_hits,
         "pubmed_citations": pubmed_citations,
-        "molecular_evaluations": molecular_evals
+        "molecular_evaluations": molecular_evals,
+        "acb_anticholinergic_burden": acb_assessment,
+        "beers_criteria_pims": beers_pims,
+        "renal_kdigo_alerts": renal_kdigo,
+        "cpic_guideline_alerts": cpic_alerts,
+        "phenoconversion_events": phenoconversion_events
     }
 
 @app.post("/api/analyze-prescription")
@@ -549,6 +580,58 @@ def api_parse_prescription_text(req: TextPrescriptionRequest):
         "status": "SUCCESS",
         "extracted_medications": extracted
     }
+
+class PopPKMonteCarloRequest(BaseModel):
+    dose_mg: float = 100.0
+    theta_ka: float = 1.2
+    theta_cl: float = 4.5
+    theta_vd: float = 35.0
+    therapeutic_min_mg_l: float = 0.8
+    therapeutic_max_mg_l: float = 3.5
+    cohort_size: int = 500
+
+class CPICEvaluationRequest(BaseModel):
+    gene: str
+    phenotype: str
+    drug: str
+
+class ACBRequest(BaseModel):
+    medications: List[str]
+
+class BeersRequest(BaseModel):
+    age: int
+    medications: List[str]
+
+@app.post("/api/poppk/monte-carlo")
+def api_poppk_monte_carlo(req: PopPKMonteCarloRequest):
+    """Monte Carlo Virtual Patient Population PK Simulation (NLME IIV)."""
+    return poppk_sim.simulate_cohort_trials(
+        dose_mg=req.dose_mg,
+        theta_ka=req.theta_ka,
+        theta_cl=req.theta_cl,
+        theta_vd=req.theta_vd,
+        therapeutic_min_mg_l=req.therapeutic_min_mg_l,
+        therapeutic_max_mg_l=req.therapeutic_max_mg_l,
+        cohort_size=req.cohort_size
+    )
+
+@app.post("/api/cpic/evaluate")
+def api_cpic_evaluate(req: CPICEvaluationRequest):
+    """CPIC Level A Clinical Pharmacogenomics Guideline Evaluator."""
+    res = cpic_engine.evaluate_pgx_guideline(req.gene, req.phenotype, req.drug)
+    if not res:
+        raise HTTPException(status_code=404, detail="No official CPIC Level A guideline found for this combination.")
+    return res
+
+@app.post("/api/cdss/acb")
+def api_cdss_acb(req: ACBRequest):
+    """Calculates Anticholinergic Cognitive Burden (ACB) score and dementia risk."""
+    return cdss_engine.calculate_anticholinergic_burden(req.medications)
+
+@app.post("/api/cdss/beers")
+def api_cdss_beers(req: BeersRequest):
+    """Evaluates American Geriatrics Society (AGS) Beers Criteria 2023 PIMs."""
+    return cdss_engine.evaluate_geriatric_beers(req.age, req.medications)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

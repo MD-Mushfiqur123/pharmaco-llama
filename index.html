@@ -437,6 +437,169 @@
       `;
     }
 
+  
+    // 7. Clinical Decision Support System (CDSS) - Beers Criteria & ACB Scale
+    const ACB_SCALE_MAP = {
+      "amitriptyline": 3, "diphenhydramine": 3, "hydroxyzine": 3, "oxybutynin": 3,
+      "paroxetine": 3, "chlorpheniramine": 3, "promethazine": 3, "scopolamine": 3,
+      "carbamazepine": 2, "cyclobenzaprine": 2, "loperamide": 2, "olanzapine": 2,
+      "atenolol": 1, "captopril": 1, "furosemide": 1, "haloperidol": 1, "metoprolol": 1,
+      "warfarin": 1, "diazepam": 1, "lorazepam": 1
+    };
+
+    const BEERS_PIMS_MAP = {
+      "diazepam": "Long-acting benzodiazepines increase risk of cognitive impairment, delirium, falls, and motor vehicle accidents in older adults.",
+      "diphenhydramine": "Potent anticholinergic; high risk of confusion, dry mouth, urinary retention, and acute delirium.",
+      "indomethacin": "Most CNS adverse effects among NSAIDs; high risk of GI bleed and acute renal injury.",
+      "ketorolac": "High risk of peptic ulcer disease and GI bleeding even with short-term oral therapy.",
+      "glimepiride": "Long-duration sulfonylurea causing severe, prolonged hypoglycemia in elderly patients."
+    };
+
+    function renderCdssSection() {
+      const container = document.getElementById('cdss-container');
+      if (!container) return;
+
+      let totalAcb = 0;
+      const acbDrugs = [];
+      const flaggedBeers = [];
+
+      activeDrugs.forEach(d => {
+        const nameLower = d.name.toLowerCase();
+        if (ACB_SCALE_MAP[nameLower]) {
+          const score = ACB_SCALE_MAP[nameLower];
+          totalAcb += score;
+          acbDrugs.push({ name: d.name, score: score });
+        }
+        if (BEERS_PIMS_MAP[nameLower]) {
+          flaggedBeers.push({ name: d.name, rationale: BEERS_PIMS_MAP[nameLower] });
+        }
+      });
+
+      let acbBadgeClass = "bg-[#34C759]/10 text-[#248A3D] border-[#34C759]/20";
+      let acbLabel = "LOW RISK (Score 0-1)";
+      if (totalAcb >= 3) {
+        acbBadgeClass = "bg-[#FF3B30]/10 text-[#D70015] border-[#FF3B30]/20";
+        acbLabel = `HIGH COGNITIVE & DELIRIUM RISK (Score ${totalAcb})`;
+      } else if (totalAcb >= 2) {
+        acbBadgeClass = "bg-[#FF9500]/10 text-[#C97800] border-[#FF9500]/20";
+        acbLabel = `MODERATE RISK (Score ${totalAcb})`;
+      }
+
+      container.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+          <!-- ACB Score Widget -->
+          <div class="p-3.5 rounded-xl bg-white border border-[#E5E5EA] shadow-xs">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-[#1D1D1F]">Anticholinergic Burden (ACB)</span>
+              <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${acbBadgeClass}">${acbLabel}</span>
+            </div>
+            <p class="text-xs text-[#6E6E73] leading-relaxed mb-2">
+              Cumulative anticholinergic exposure score: <strong>${totalAcb}</strong>. Scores >= 3 are clinically correlated with cognitive decline and falls.
+            </p>
+            ${acbDrugs.length > 0 ? `
+              <div class="flex flex-wrap gap-1.5 pt-1">
+                ${acbDrugs.map(item => `
+                  <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#F2F2F7] text-[#424245]">
+                    ${escapeHtml(item.name)} (Score +${item.score})
+                  </span>
+                `).join('')}
+              </div>
+            ` : '<span class="text-[11px] text-[#34C759] font-medium">No anticholinergic burden detected.</span>'}
+          </div>
+
+          <!-- Geriatric Beers PIMs Widget -->
+          <div class="p-3.5 rounded-xl bg-white border border-[#E5E5EA] shadow-xs">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-[#1D1D1F]">AGS Beers Criteria 2023 (Age >= 65)</span>
+              <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${flaggedBeers.length > 0 ? 'bg-[#FF3B30]/10 text-[#D70015]' : 'bg-[#34C759]/10 text-[#248A3D]'}">
+                ${flaggedBeers.length > 0 ? `${flaggedBeers.length} PIM FLAGGED` : 'NOMINAL'}
+              </span>
+            </div>
+            ${flaggedBeers.length > 0 ? `
+              <div class="space-y-1.5 text-xs text-[#6E6E73]">
+                ${flaggedBeers.map(pim => `
+                  <div class="p-2 rounded-lg bg-[#FFF5F5] border border-[#FFD0D0] text-[#D70015]">
+                    <strong>${escapeHtml(pim.name)}:</strong> ${escapeHtml(pim.rationale)}
+                  </div>
+                `).join('')}
+              </div>
+            ` : '<p class="text-xs text-[#6E6E73]">No potentially inappropriate medications (PIMs) under Beers Criteria.</p>'}
+          </div>
+        </div>
+      `;
+    }
+
+    // 8. CPIC Level A Guidelines & DDGI Phenoconversion
+    function renderCpicSection() {
+      const container = document.getElementById('cpic-pheno-container');
+      if (!container) return;
+
+      const hasClopidogrel = activeDrugs.some(d => d.name.toLowerCase() === "clopidogrel");
+      const hasOmeprazole = activeDrugs.some(d => d.name.toLowerCase() === "omeprazole" || d.name.toLowerCase() === "esomeprazole");
+      const hasCodeine = activeDrugs.some(d => d.name.toLowerCase() === "codeine" || d.name.toLowerCase() === "tramadol");
+      const hasFluoxetine = activeDrugs.some(d => d.name.toLowerCase() === "fluoxetine" || d.name.toLowerCase() === "paroxetine");
+      const hasSimvastatin = activeDrugs.some(d => d.name.toLowerCase() === "simvastatin");
+
+      const cpicCards = [];
+
+      if (hasClopidogrel) {
+        cpicCards.push({
+          gene: "CYP2C19",
+          drug: "Clopidogrel",
+          guideline: "CPIC Level A",
+          phenotype: hasOmeprazole ? "Phenoconverted Poor Metabolizer (via Omeprazole)" : "Normal Metabolizer (Genotype *1/*1)",
+          status: hasOmeprazole ? "CRITICAL_ACTION" : "NOMINAL",
+          recommendation: hasOmeprazole ? "Avoid Clopidogrel. Omeprazole phenoconverts CYP2C19 into inactive state. Prescribe Prasugrel or Ticagrelor." : "Prescribe standard dose 75mg/day."
+        });
+      }
+
+      if (hasCodeine && hasFluoxetine) {
+        cpicCards.push({
+          gene: "CYP2D6",
+          drug: "Codeine / Tramadol",
+          guideline: "CPIC Level A",
+          phenotype: "Phenoconverted Poor Metabolizer (via Fluoxetine)",
+          status: "CRITICAL_ACTION",
+          recommendation: "Avoid Codeine. Concurrent Fluoxetine completely blocks CYP2D6 bioactivation to morphine, leading to complete analgesia failure."
+        });
+      }
+
+      if (hasSimvastatin) {
+        cpicCards.push({
+          gene: "SLCO1B1",
+          drug: "Simvastatin",
+          guideline: "CPIC Level A",
+          phenotype: "Intermediate/Decreased Function (*5 Carrier)",
+          status: "MONITOR",
+          recommendation: "Do not exceed Simvastatin 20mg daily. Monitor for unexplained muscle weakness or CK elevation."
+        });
+      }
+
+      if (cpicCards.length === 0) {
+        container.innerHTML = `
+          <div class="p-4 rounded-xl bg-[#F9F9FB] border border-[#E5E5EA] text-center text-xs text-[#86868B]">
+            No high-priority CPIC Level A alleles or DDGI phenoconversion events triggered for current medications.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = cpicCards.map(c => `
+        <div class="p-4 rounded-xl border ${c.status === 'CRITICAL_ACTION' ? 'border-[#FFD0D0] bg-[#FFF5F5]' : 'border-[#E5E5EA] bg-white'} shadow-xs">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-[#1D1D1F] font-mono">${escapeHtml(c.gene)} - ${escapeHtml(c.drug)}</span>
+            <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${c.status === 'CRITICAL_ACTION' ? 'bg-[#FF3B30]/10 text-[#D70015]' : 'bg-[#0071E3]/10 text-[#0071E3]'}">
+              ${escapeHtml(c.guideline)}
+            </span>
+          </div>
+          <div class="text-xs space-y-1">
+            <div><strong class="text-[#1D1D1F]">Phenotype:</strong> <span class="${c.status === 'CRITICAL_ACTION' ? 'text-[#D70015] font-semibold' : 'text-[#424245]'}">${escapeHtml(c.phenotype)}</span></div>
+            <div><strong class="text-[#1D1D1F]">Clinical Action:</strong> <span class="text-[#424245]">${escapeHtml(c.recommendation)}</span></div>
+          </div>
+        </div>
+      `).join('');
+    }
+
   </script>
   
   <!-- Apple-grade Typography: Plus Jakarta Sans & Space Mono -->
@@ -876,6 +1039,169 @@
       `;
     }
 
+  
+    // 7. Clinical Decision Support System (CDSS) - Beers Criteria & ACB Scale
+    const ACB_SCALE_MAP = {
+      "amitriptyline": 3, "diphenhydramine": 3, "hydroxyzine": 3, "oxybutynin": 3,
+      "paroxetine": 3, "chlorpheniramine": 3, "promethazine": 3, "scopolamine": 3,
+      "carbamazepine": 2, "cyclobenzaprine": 2, "loperamide": 2, "olanzapine": 2,
+      "atenolol": 1, "captopril": 1, "furosemide": 1, "haloperidol": 1, "metoprolol": 1,
+      "warfarin": 1, "diazepam": 1, "lorazepam": 1
+    };
+
+    const BEERS_PIMS_MAP = {
+      "diazepam": "Long-acting benzodiazepines increase risk of cognitive impairment, delirium, falls, and motor vehicle accidents in older adults.",
+      "diphenhydramine": "Potent anticholinergic; high risk of confusion, dry mouth, urinary retention, and acute delirium.",
+      "indomethacin": "Most CNS adverse effects among NSAIDs; high risk of GI bleed and acute renal injury.",
+      "ketorolac": "High risk of peptic ulcer disease and GI bleeding even with short-term oral therapy.",
+      "glimepiride": "Long-duration sulfonylurea causing severe, prolonged hypoglycemia in elderly patients."
+    };
+
+    function renderCdssSection() {
+      const container = document.getElementById('cdss-container');
+      if (!container) return;
+
+      let totalAcb = 0;
+      const acbDrugs = [];
+      const flaggedBeers = [];
+
+      activeDrugs.forEach(d => {
+        const nameLower = d.name.toLowerCase();
+        if (ACB_SCALE_MAP[nameLower]) {
+          const score = ACB_SCALE_MAP[nameLower];
+          totalAcb += score;
+          acbDrugs.push({ name: d.name, score: score });
+        }
+        if (BEERS_PIMS_MAP[nameLower]) {
+          flaggedBeers.push({ name: d.name, rationale: BEERS_PIMS_MAP[nameLower] });
+        }
+      });
+
+      let acbBadgeClass = "bg-[#34C759]/10 text-[#248A3D] border-[#34C759]/20";
+      let acbLabel = "LOW RISK (Score 0-1)";
+      if (totalAcb >= 3) {
+        acbBadgeClass = "bg-[#FF3B30]/10 text-[#D70015] border-[#FF3B30]/20";
+        acbLabel = `HIGH COGNITIVE & DELIRIUM RISK (Score ${totalAcb})`;
+      } else if (totalAcb >= 2) {
+        acbBadgeClass = "bg-[#FF9500]/10 text-[#C97800] border-[#FF9500]/20";
+        acbLabel = `MODERATE RISK (Score ${totalAcb})`;
+      }
+
+      container.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+          <!-- ACB Score Widget -->
+          <div class="p-3.5 rounded-xl bg-white border border-[#E5E5EA] shadow-xs">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-[#1D1D1F]">Anticholinergic Burden (ACB)</span>
+              <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${acbBadgeClass}">${acbLabel}</span>
+            </div>
+            <p class="text-xs text-[#6E6E73] leading-relaxed mb-2">
+              Cumulative anticholinergic exposure score: <strong>${totalAcb}</strong>. Scores >= 3 are clinically correlated with cognitive decline and falls.
+            </p>
+            ${acbDrugs.length > 0 ? `
+              <div class="flex flex-wrap gap-1.5 pt-1">
+                ${acbDrugs.map(item => `
+                  <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#F2F2F7] text-[#424245]">
+                    ${escapeHtml(item.name)} (Score +${item.score})
+                  </span>
+                `).join('')}
+              </div>
+            ` : '<span class="text-[11px] text-[#34C759] font-medium">No anticholinergic burden detected.</span>'}
+          </div>
+
+          <!-- Geriatric Beers PIMs Widget -->
+          <div class="p-3.5 rounded-xl bg-white border border-[#E5E5EA] shadow-xs">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-[#1D1D1F]">AGS Beers Criteria 2023 (Age >= 65)</span>
+              <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${flaggedBeers.length > 0 ? 'bg-[#FF3B30]/10 text-[#D70015]' : 'bg-[#34C759]/10 text-[#248A3D]'}">
+                ${flaggedBeers.length > 0 ? `${flaggedBeers.length} PIM FLAGGED` : 'NOMINAL'}
+              </span>
+            </div>
+            ${flaggedBeers.length > 0 ? `
+              <div class="space-y-1.5 text-xs text-[#6E6E73]">
+                ${flaggedBeers.map(pim => `
+                  <div class="p-2 rounded-lg bg-[#FFF5F5] border border-[#FFD0D0] text-[#D70015]">
+                    <strong>${escapeHtml(pim.name)}:</strong> ${escapeHtml(pim.rationale)}
+                  </div>
+                `).join('')}
+              </div>
+            ` : '<p class="text-xs text-[#6E6E73]">No potentially inappropriate medications (PIMs) under Beers Criteria.</p>'}
+          </div>
+        </div>
+      `;
+    }
+
+    // 8. CPIC Level A Guidelines & DDGI Phenoconversion
+    function renderCpicSection() {
+      const container = document.getElementById('cpic-pheno-container');
+      if (!container) return;
+
+      const hasClopidogrel = activeDrugs.some(d => d.name.toLowerCase() === "clopidogrel");
+      const hasOmeprazole = activeDrugs.some(d => d.name.toLowerCase() === "omeprazole" || d.name.toLowerCase() === "esomeprazole");
+      const hasCodeine = activeDrugs.some(d => d.name.toLowerCase() === "codeine" || d.name.toLowerCase() === "tramadol");
+      const hasFluoxetine = activeDrugs.some(d => d.name.toLowerCase() === "fluoxetine" || d.name.toLowerCase() === "paroxetine");
+      const hasSimvastatin = activeDrugs.some(d => d.name.toLowerCase() === "simvastatin");
+
+      const cpicCards = [];
+
+      if (hasClopidogrel) {
+        cpicCards.push({
+          gene: "CYP2C19",
+          drug: "Clopidogrel",
+          guideline: "CPIC Level A",
+          phenotype: hasOmeprazole ? "Phenoconverted Poor Metabolizer (via Omeprazole)" : "Normal Metabolizer (Genotype *1/*1)",
+          status: hasOmeprazole ? "CRITICAL_ACTION" : "NOMINAL",
+          recommendation: hasOmeprazole ? "Avoid Clopidogrel. Omeprazole phenoconverts CYP2C19 into inactive state. Prescribe Prasugrel or Ticagrelor." : "Prescribe standard dose 75mg/day."
+        });
+      }
+
+      if (hasCodeine && hasFluoxetine) {
+        cpicCards.push({
+          gene: "CYP2D6",
+          drug: "Codeine / Tramadol",
+          guideline: "CPIC Level A",
+          phenotype: "Phenoconverted Poor Metabolizer (via Fluoxetine)",
+          status: "CRITICAL_ACTION",
+          recommendation: "Avoid Codeine. Concurrent Fluoxetine completely blocks CYP2D6 bioactivation to morphine, leading to complete analgesia failure."
+        });
+      }
+
+      if (hasSimvastatin) {
+        cpicCards.push({
+          gene: "SLCO1B1",
+          drug: "Simvastatin",
+          guideline: "CPIC Level A",
+          phenotype: "Intermediate/Decreased Function (*5 Carrier)",
+          status: "MONITOR",
+          recommendation: "Do not exceed Simvastatin 20mg daily. Monitor for unexplained muscle weakness or CK elevation."
+        });
+      }
+
+      if (cpicCards.length === 0) {
+        container.innerHTML = `
+          <div class="p-4 rounded-xl bg-[#F9F9FB] border border-[#E5E5EA] text-center text-xs text-[#86868B]">
+            No high-priority CPIC Level A alleles or DDGI phenoconversion events triggered for current medications.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = cpicCards.map(c => `
+        <div class="p-4 rounded-xl border ${c.status === 'CRITICAL_ACTION' ? 'border-[#FFD0D0] bg-[#FFF5F5]' : 'border-[#E5E5EA] bg-white'} shadow-xs">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-[#1D1D1F] font-mono">${escapeHtml(c.gene)} - ${escapeHtml(c.drug)}</span>
+            <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${c.status === 'CRITICAL_ACTION' ? 'bg-[#FF3B30]/10 text-[#D70015]' : 'bg-[#0071E3]/10 text-[#0071E3]'}">
+              ${escapeHtml(c.guideline)}
+            </span>
+          </div>
+          <div class="text-xs space-y-1">
+            <div><strong class="text-[#1D1D1F]">Phenotype:</strong> <span class="${c.status === 'CRITICAL_ACTION' ? 'text-[#D70015] font-semibold' : 'text-[#424245]'}">${escapeHtml(c.phenotype)}</span></div>
+            <div><strong class="text-[#1D1D1F]">Clinical Action:</strong> <span class="text-[#424245]">${escapeHtml(c.recommendation)}</span></div>
+          </div>
+        </div>
+      `).join('');
+    }
+
   </script>
   
   <!-- Lucide Icons -->
@@ -1308,6 +1634,169 @@
           `).join('')}
         </div>
       `;
+    }
+
+  
+    // 7. Clinical Decision Support System (CDSS) - Beers Criteria & ACB Scale
+    const ACB_SCALE_MAP = {
+      "amitriptyline": 3, "diphenhydramine": 3, "hydroxyzine": 3, "oxybutynin": 3,
+      "paroxetine": 3, "chlorpheniramine": 3, "promethazine": 3, "scopolamine": 3,
+      "carbamazepine": 2, "cyclobenzaprine": 2, "loperamide": 2, "olanzapine": 2,
+      "atenolol": 1, "captopril": 1, "furosemide": 1, "haloperidol": 1, "metoprolol": 1,
+      "warfarin": 1, "diazepam": 1, "lorazepam": 1
+    };
+
+    const BEERS_PIMS_MAP = {
+      "diazepam": "Long-acting benzodiazepines increase risk of cognitive impairment, delirium, falls, and motor vehicle accidents in older adults.",
+      "diphenhydramine": "Potent anticholinergic; high risk of confusion, dry mouth, urinary retention, and acute delirium.",
+      "indomethacin": "Most CNS adverse effects among NSAIDs; high risk of GI bleed and acute renal injury.",
+      "ketorolac": "High risk of peptic ulcer disease and GI bleeding even with short-term oral therapy.",
+      "glimepiride": "Long-duration sulfonylurea causing severe, prolonged hypoglycemia in elderly patients."
+    };
+
+    function renderCdssSection() {
+      const container = document.getElementById('cdss-container');
+      if (!container) return;
+
+      let totalAcb = 0;
+      const acbDrugs = [];
+      const flaggedBeers = [];
+
+      activeDrugs.forEach(d => {
+        const nameLower = d.name.toLowerCase();
+        if (ACB_SCALE_MAP[nameLower]) {
+          const score = ACB_SCALE_MAP[nameLower];
+          totalAcb += score;
+          acbDrugs.push({ name: d.name, score: score });
+        }
+        if (BEERS_PIMS_MAP[nameLower]) {
+          flaggedBeers.push({ name: d.name, rationale: BEERS_PIMS_MAP[nameLower] });
+        }
+      });
+
+      let acbBadgeClass = "bg-[#34C759]/10 text-[#248A3D] border-[#34C759]/20";
+      let acbLabel = "LOW RISK (Score 0-1)";
+      if (totalAcb >= 3) {
+        acbBadgeClass = "bg-[#FF3B30]/10 text-[#D70015] border-[#FF3B30]/20";
+        acbLabel = `HIGH COGNITIVE & DELIRIUM RISK (Score ${totalAcb})`;
+      } else if (totalAcb >= 2) {
+        acbBadgeClass = "bg-[#FF9500]/10 text-[#C97800] border-[#FF9500]/20";
+        acbLabel = `MODERATE RISK (Score ${totalAcb})`;
+      }
+
+      container.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+          <!-- ACB Score Widget -->
+          <div class="p-3.5 rounded-xl bg-white border border-[#E5E5EA] shadow-xs">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-[#1D1D1F]">Anticholinergic Burden (ACB)</span>
+              <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${acbBadgeClass}">${acbLabel}</span>
+            </div>
+            <p class="text-xs text-[#6E6E73] leading-relaxed mb-2">
+              Cumulative anticholinergic exposure score: <strong>${totalAcb}</strong>. Scores >= 3 are clinically correlated with cognitive decline and falls.
+            </p>
+            ${acbDrugs.length > 0 ? `
+              <div class="flex flex-wrap gap-1.5 pt-1">
+                ${acbDrugs.map(item => `
+                  <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#F2F2F7] text-[#424245]">
+                    ${escapeHtml(item.name)} (Score +${item.score})
+                  </span>
+                `).join('')}
+              </div>
+            ` : '<span class="text-[11px] text-[#34C759] font-medium">No anticholinergic burden detected.</span>'}
+          </div>
+
+          <!-- Geriatric Beers PIMs Widget -->
+          <div class="p-3.5 rounded-xl bg-white border border-[#E5E5EA] shadow-xs">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-[#1D1D1F]">AGS Beers Criteria 2023 (Age >= 65)</span>
+              <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${flaggedBeers.length > 0 ? 'bg-[#FF3B30]/10 text-[#D70015]' : 'bg-[#34C759]/10 text-[#248A3D]'}">
+                ${flaggedBeers.length > 0 ? `${flaggedBeers.length} PIM FLAGGED` : 'NOMINAL'}
+              </span>
+            </div>
+            ${flaggedBeers.length > 0 ? `
+              <div class="space-y-1.5 text-xs text-[#6E6E73]">
+                ${flaggedBeers.map(pim => `
+                  <div class="p-2 rounded-lg bg-[#FFF5F5] border border-[#FFD0D0] text-[#D70015]">
+                    <strong>${escapeHtml(pim.name)}:</strong> ${escapeHtml(pim.rationale)}
+                  </div>
+                `).join('')}
+              </div>
+            ` : '<p class="text-xs text-[#6E6E73]">No potentially inappropriate medications (PIMs) under Beers Criteria.</p>'}
+          </div>
+        </div>
+      `;
+    }
+
+    // 8. CPIC Level A Guidelines & DDGI Phenoconversion
+    function renderCpicSection() {
+      const container = document.getElementById('cpic-pheno-container');
+      if (!container) return;
+
+      const hasClopidogrel = activeDrugs.some(d => d.name.toLowerCase() === "clopidogrel");
+      const hasOmeprazole = activeDrugs.some(d => d.name.toLowerCase() === "omeprazole" || d.name.toLowerCase() === "esomeprazole");
+      const hasCodeine = activeDrugs.some(d => d.name.toLowerCase() === "codeine" || d.name.toLowerCase() === "tramadol");
+      const hasFluoxetine = activeDrugs.some(d => d.name.toLowerCase() === "fluoxetine" || d.name.toLowerCase() === "paroxetine");
+      const hasSimvastatin = activeDrugs.some(d => d.name.toLowerCase() === "simvastatin");
+
+      const cpicCards = [];
+
+      if (hasClopidogrel) {
+        cpicCards.push({
+          gene: "CYP2C19",
+          drug: "Clopidogrel",
+          guideline: "CPIC Level A",
+          phenotype: hasOmeprazole ? "Phenoconverted Poor Metabolizer (via Omeprazole)" : "Normal Metabolizer (Genotype *1/*1)",
+          status: hasOmeprazole ? "CRITICAL_ACTION" : "NOMINAL",
+          recommendation: hasOmeprazole ? "Avoid Clopidogrel. Omeprazole phenoconverts CYP2C19 into inactive state. Prescribe Prasugrel or Ticagrelor." : "Prescribe standard dose 75mg/day."
+        });
+      }
+
+      if (hasCodeine && hasFluoxetine) {
+        cpicCards.push({
+          gene: "CYP2D6",
+          drug: "Codeine / Tramadol",
+          guideline: "CPIC Level A",
+          phenotype: "Phenoconverted Poor Metabolizer (via Fluoxetine)",
+          status: "CRITICAL_ACTION",
+          recommendation: "Avoid Codeine. Concurrent Fluoxetine completely blocks CYP2D6 bioactivation to morphine, leading to complete analgesia failure."
+        });
+      }
+
+      if (hasSimvastatin) {
+        cpicCards.push({
+          gene: "SLCO1B1",
+          drug: "Simvastatin",
+          guideline: "CPIC Level A",
+          phenotype: "Intermediate/Decreased Function (*5 Carrier)",
+          status: "MONITOR",
+          recommendation: "Do not exceed Simvastatin 20mg daily. Monitor for unexplained muscle weakness or CK elevation."
+        });
+      }
+
+      if (cpicCards.length === 0) {
+        container.innerHTML = `
+          <div class="p-4 rounded-xl bg-[#F9F9FB] border border-[#E5E5EA] text-center text-xs text-[#86868B]">
+            No high-priority CPIC Level A alleles or DDGI phenoconversion events triggered for current medications.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = cpicCards.map(c => `
+        <div class="p-4 rounded-xl border ${c.status === 'CRITICAL_ACTION' ? 'border-[#FFD0D0] bg-[#FFF5F5]' : 'border-[#E5E5EA] bg-white'} shadow-xs">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-[#1D1D1F] font-mono">${escapeHtml(c.gene)} - ${escapeHtml(c.drug)}</span>
+            <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${c.status === 'CRITICAL_ACTION' ? 'bg-[#FF3B30]/10 text-[#D70015]' : 'bg-[#0071E3]/10 text-[#0071E3]'}">
+              ${escapeHtml(c.guideline)}
+            </span>
+          </div>
+          <div class="text-xs space-y-1">
+            <div><strong class="text-[#1D1D1F]">Phenotype:</strong> <span class="${c.status === 'CRITICAL_ACTION' ? 'text-[#D70015] font-semibold' : 'text-[#424245]'}">${escapeHtml(c.phenotype)}</span></div>
+            <div><strong class="text-[#1D1D1F]">Clinical Action:</strong> <span class="text-[#424245]">${escapeHtml(c.recommendation)}</span></div>
+          </div>
+        </div>
+      `).join('');
     }
 
   </script>
@@ -1746,6 +2235,42 @@
           </div>
 
           <div id="molecular-descriptors-container" class="space-y-3">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Clinical Decision Support: Geriatric Beers Criteria & Anticholinergic Cognitive Burden (ACB) -->
+        <div class="apple-card p-6">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div>
+              <div class="flex items-center space-x-2">
+                <i data-lucide="shield-check" class="w-4 h-4 text-[#D70015]"></i>
+                <h3 class="text-sm font-bold text-[#1D1D1F]">Clinical Decision Support: Geriatric Beers (2023) & Anticholinergic Burden</h3>
+              </div>
+              <p class="text-xs text-[#86868B] mt-0.5">American Geriatrics Society (AGS) PIMs and cognitive delirium risk assessment.</p>
+            </div>
+            <span class="text-[10px] font-bold text-[#D70015] bg-[#D70015]/10 px-2 py-0.5 rounded-full font-mono">AGS Beers + ACB Scale</span>
+          </div>
+
+          <div id="cdss-container" class="space-y-3">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- CPIC Level A Pharmacogenomics & DDGI Phenoconversion Engine -->
+        <div class="apple-card p-6">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div>
+              <div class="flex items-center space-x-2">
+                <i data-lucide="dna" class="w-4 h-4 text-[#0071E3]"></i>
+                <h3 class="text-sm font-bold text-[#1D1D1F]">CPIC Level A Clinical Guidelines & DDGI Phenoconversion</h3>
+              </div>
+              <p class="text-xs text-[#86868B] mt-0.5">Official diplotype translation & inhibitor burden converting Normal Metabolizers to functional Poor Metabolizers.</p>
+            </div>
+            <span class="text-[10px] font-bold text-[#0071E3] bg-[#0071E3]/10 px-2 py-0.5 rounded-full font-mono">CPIC Level A Consensus</span>
+          </div>
+
+          <div id="cpic-pheno-container" class="space-y-3">
             <!-- Populated dynamically -->
           </div>
         </div>
@@ -2340,6 +2865,8 @@
       renderPairwiseMatrix();
       renderTdcEvidenceSection();
       renderMolecularDescriptorsSection();
+      renderCdssSection();
+      renderCpicSection();
       await runAutonomousAudit();
     }
 
@@ -2821,6 +3348,8 @@
       renderPairwiseMatrix();
       renderTdcEvidenceSection();
       renderMolecularDescriptorsSection();
+      renderCdssSection();
+      renderCpicSection();
 
       let maxScore = 15;
       let worstSeverity = "SAFE";
@@ -3009,6 +3538,8 @@
       renderPairwiseMatrix();
       renderTdcEvidenceSection();
       renderMolecularDescriptorsSection();
+      renderCdssSection();
+      renderCpicSection();
       lucide.createIcons();
     }
 
@@ -3514,6 +4045,169 @@
           `).join('')}
         </div>
       `;
+    }
+
+  
+    // 7. Clinical Decision Support System (CDSS) - Beers Criteria & ACB Scale
+    const ACB_SCALE_MAP = {
+      "amitriptyline": 3, "diphenhydramine": 3, "hydroxyzine": 3, "oxybutynin": 3,
+      "paroxetine": 3, "chlorpheniramine": 3, "promethazine": 3, "scopolamine": 3,
+      "carbamazepine": 2, "cyclobenzaprine": 2, "loperamide": 2, "olanzapine": 2,
+      "atenolol": 1, "captopril": 1, "furosemide": 1, "haloperidol": 1, "metoprolol": 1,
+      "warfarin": 1, "diazepam": 1, "lorazepam": 1
+    };
+
+    const BEERS_PIMS_MAP = {
+      "diazepam": "Long-acting benzodiazepines increase risk of cognitive impairment, delirium, falls, and motor vehicle accidents in older adults.",
+      "diphenhydramine": "Potent anticholinergic; high risk of confusion, dry mouth, urinary retention, and acute delirium.",
+      "indomethacin": "Most CNS adverse effects among NSAIDs; high risk of GI bleed and acute renal injury.",
+      "ketorolac": "High risk of peptic ulcer disease and GI bleeding even with short-term oral therapy.",
+      "glimepiride": "Long-duration sulfonylurea causing severe, prolonged hypoglycemia in elderly patients."
+    };
+
+    function renderCdssSection() {
+      const container = document.getElementById('cdss-container');
+      if (!container) return;
+
+      let totalAcb = 0;
+      const acbDrugs = [];
+      const flaggedBeers = [];
+
+      activeDrugs.forEach(d => {
+        const nameLower = d.name.toLowerCase();
+        if (ACB_SCALE_MAP[nameLower]) {
+          const score = ACB_SCALE_MAP[nameLower];
+          totalAcb += score;
+          acbDrugs.push({ name: d.name, score: score });
+        }
+        if (BEERS_PIMS_MAP[nameLower]) {
+          flaggedBeers.push({ name: d.name, rationale: BEERS_PIMS_MAP[nameLower] });
+        }
+      });
+
+      let acbBadgeClass = "bg-[#34C759]/10 text-[#248A3D] border-[#34C759]/20";
+      let acbLabel = "LOW RISK (Score 0-1)";
+      if (totalAcb >= 3) {
+        acbBadgeClass = "bg-[#FF3B30]/10 text-[#D70015] border-[#FF3B30]/20";
+        acbLabel = `HIGH COGNITIVE & DELIRIUM RISK (Score ${totalAcb})`;
+      } else if (totalAcb >= 2) {
+        acbBadgeClass = "bg-[#FF9500]/10 text-[#C97800] border-[#FF9500]/20";
+        acbLabel = `MODERATE RISK (Score ${totalAcb})`;
+      }
+
+      container.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+          <!-- ACB Score Widget -->
+          <div class="p-3.5 rounded-xl bg-white border border-[#E5E5EA] shadow-xs">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-[#1D1D1F]">Anticholinergic Burden (ACB)</span>
+              <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${acbBadgeClass}">${acbLabel}</span>
+            </div>
+            <p class="text-xs text-[#6E6E73] leading-relaxed mb-2">
+              Cumulative anticholinergic exposure score: <strong>${totalAcb}</strong>. Scores >= 3 are clinically correlated with cognitive decline and falls.
+            </p>
+            ${acbDrugs.length > 0 ? `
+              <div class="flex flex-wrap gap-1.5 pt-1">
+                ${acbDrugs.map(item => `
+                  <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#F2F2F7] text-[#424245]">
+                    ${escapeHtml(item.name)} (Score +${item.score})
+                  </span>
+                `).join('')}
+              </div>
+            ` : '<span class="text-[11px] text-[#34C759] font-medium">No anticholinergic burden detected.</span>'}
+          </div>
+
+          <!-- Geriatric Beers PIMs Widget -->
+          <div class="p-3.5 rounded-xl bg-white border border-[#E5E5EA] shadow-xs">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-[#1D1D1F]">AGS Beers Criteria 2023 (Age >= 65)</span>
+              <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${flaggedBeers.length > 0 ? 'bg-[#FF3B30]/10 text-[#D70015]' : 'bg-[#34C759]/10 text-[#248A3D]'}">
+                ${flaggedBeers.length > 0 ? `${flaggedBeers.length} PIM FLAGGED` : 'NOMINAL'}
+              </span>
+            </div>
+            ${flaggedBeers.length > 0 ? `
+              <div class="space-y-1.5 text-xs text-[#6E6E73]">
+                ${flaggedBeers.map(pim => `
+                  <div class="p-2 rounded-lg bg-[#FFF5F5] border border-[#FFD0D0] text-[#D70015]">
+                    <strong>${escapeHtml(pim.name)}:</strong> ${escapeHtml(pim.rationale)}
+                  </div>
+                `).join('')}
+              </div>
+            ` : '<p class="text-xs text-[#6E6E73]">No potentially inappropriate medications (PIMs) under Beers Criteria.</p>'}
+          </div>
+        </div>
+      `;
+    }
+
+    // 8. CPIC Level A Guidelines & DDGI Phenoconversion
+    function renderCpicSection() {
+      const container = document.getElementById('cpic-pheno-container');
+      if (!container) return;
+
+      const hasClopidogrel = activeDrugs.some(d => d.name.toLowerCase() === "clopidogrel");
+      const hasOmeprazole = activeDrugs.some(d => d.name.toLowerCase() === "omeprazole" || d.name.toLowerCase() === "esomeprazole");
+      const hasCodeine = activeDrugs.some(d => d.name.toLowerCase() === "codeine" || d.name.toLowerCase() === "tramadol");
+      const hasFluoxetine = activeDrugs.some(d => d.name.toLowerCase() === "fluoxetine" || d.name.toLowerCase() === "paroxetine");
+      const hasSimvastatin = activeDrugs.some(d => d.name.toLowerCase() === "simvastatin");
+
+      const cpicCards = [];
+
+      if (hasClopidogrel) {
+        cpicCards.push({
+          gene: "CYP2C19",
+          drug: "Clopidogrel",
+          guideline: "CPIC Level A",
+          phenotype: hasOmeprazole ? "Phenoconverted Poor Metabolizer (via Omeprazole)" : "Normal Metabolizer (Genotype *1/*1)",
+          status: hasOmeprazole ? "CRITICAL_ACTION" : "NOMINAL",
+          recommendation: hasOmeprazole ? "Avoid Clopidogrel. Omeprazole phenoconverts CYP2C19 into inactive state. Prescribe Prasugrel or Ticagrelor." : "Prescribe standard dose 75mg/day."
+        });
+      }
+
+      if (hasCodeine && hasFluoxetine) {
+        cpicCards.push({
+          gene: "CYP2D6",
+          drug: "Codeine / Tramadol",
+          guideline: "CPIC Level A",
+          phenotype: "Phenoconverted Poor Metabolizer (via Fluoxetine)",
+          status: "CRITICAL_ACTION",
+          recommendation: "Avoid Codeine. Concurrent Fluoxetine completely blocks CYP2D6 bioactivation to morphine, leading to complete analgesia failure."
+        });
+      }
+
+      if (hasSimvastatin) {
+        cpicCards.push({
+          gene: "SLCO1B1",
+          drug: "Simvastatin",
+          guideline: "CPIC Level A",
+          phenotype: "Intermediate/Decreased Function (*5 Carrier)",
+          status: "MONITOR",
+          recommendation: "Do not exceed Simvastatin 20mg daily. Monitor for unexplained muscle weakness or CK elevation."
+        });
+      }
+
+      if (cpicCards.length === 0) {
+        container.innerHTML = `
+          <div class="p-4 rounded-xl bg-[#F9F9FB] border border-[#E5E5EA] text-center text-xs text-[#86868B]">
+            No high-priority CPIC Level A alleles or DDGI phenoconversion events triggered for current medications.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = cpicCards.map(c => `
+        <div class="p-4 rounded-xl border ${c.status === 'CRITICAL_ACTION' ? 'border-[#FFD0D0] bg-[#FFF5F5]' : 'border-[#E5E5EA] bg-white'} shadow-xs">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-[#1D1D1F] font-mono">${escapeHtml(c.gene)} - ${escapeHtml(c.drug)}</span>
+            <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${c.status === 'CRITICAL_ACTION' ? 'bg-[#FF3B30]/10 text-[#D70015]' : 'bg-[#0071E3]/10 text-[#0071E3]'}">
+              ${escapeHtml(c.guideline)}
+            </span>
+          </div>
+          <div class="text-xs space-y-1">
+            <div><strong class="text-[#1D1D1F]">Phenotype:</strong> <span class="${c.status === 'CRITICAL_ACTION' ? 'text-[#D70015] font-semibold' : 'text-[#424245]'}">${escapeHtml(c.phenotype)}</span></div>
+            <div><strong class="text-[#1D1D1F]">Clinical Action:</strong> <span class="text-[#424245]">${escapeHtml(c.recommendation)}</span></div>
+          </div>
+        </div>
+      `).join('');
     }
 
   </script>

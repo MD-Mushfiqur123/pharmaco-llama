@@ -9,12 +9,28 @@ Unit and Integration Test Suite for the 5 Advanced Open-Source Scientific Framew
 
 import unittest
 import numpy as np
+import os
+import sys
 
-from server.pbpk_engine import simulate_pbpk, PBPKVirtualPatient, pbpk_ode_system
-from server.tdc_ddi_engine import query_tdc_ddi, scan_full_regimen_tdc, TDC_DDI_KNOWLEDGE_BASE
-from server.molecular_engine import compute_smiles_descriptors, calculate_molecular_compatibility, CANONICAL_SMILES
-from server.pubmed_evidence import fetch_pubmed_evidence, OFFLINE_EVIDENCE_CACHE
-from server.vision_ocr_engine import parse_clinical_prescription_text
+SERVER_DIR = os.path.dirname(os.path.abspath(__file__))
+if SERVER_DIR not in sys.path:
+    sys.path.insert(0, SERVER_DIR)
+PARENT_DIR = os.path.dirname(SERVER_DIR)
+if PARENT_DIR not in sys.path:
+    sys.path.insert(0, PARENT_DIR)
+
+try:
+    from server.pbpk_engine import simulate_pbpk, PBPKVirtualPatient, pbpk_ode_system
+    from server.tdc_ddi_engine import query_tdc_ddi, scan_full_regimen_tdc, TDC_DDI_KNOWLEDGE_BASE
+    from server.molecular_engine import compute_smiles_descriptors, calculate_molecular_compatibility, CANONICAL_SMILES
+    from server.pubmed_evidence import fetch_pubmed_evidence, OFFLINE_EVIDENCE_CACHE
+    from server.vision_ocr_engine import parse_clinical_prescription_text
+except ImportError:
+    from pbpk_engine import simulate_pbpk, PBPKVirtualPatient, pbpk_ode_system
+    from tdc_ddi_engine import query_tdc_ddi, scan_full_regimen_tdc, TDC_DDI_KNOWLEDGE_BASE
+    from molecular_engine import compute_smiles_descriptors, calculate_molecular_compatibility, CANONICAL_SMILES
+    from pubmed_evidence import fetch_pubmed_evidence, OFFLINE_EVIDENCE_CACHE
+    from vision_ocr_engine import parse_clinical_prescription_text
 
 class TestIntegratedScientificEngines(unittest.TestCase):
 
