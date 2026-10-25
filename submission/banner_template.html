@@ -14,15 +14,15 @@
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      -webkit-font-smoothing: antialiased;
     }
     body {
       width: 1200px;
       height: 630px;
       overflow: hidden;
-      background: #FAFAFC;
-      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-      color: #0F172A;
-      -webkit-font-smoothing: antialiased;
+      background: #FBFBFD;
+      font-family: -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", "SF Pro Display", sans-serif;
+      color: #1D1D1F;
     }
     .serif-display {
       font-family: 'Instrument Serif', Georgia, serif;
@@ -30,124 +30,144 @@
     .mono {
       font-family: 'Space Mono', monospace;
     }
-    .subtle-grid {
-      background-image: radial-gradient(#CBD5E1 0.75px, transparent 0.75px);
-      background-size: 24px 24px;
+    .apple-shadow {
+      box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
     }
-    .card-shadow {
-      box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(226, 232, 240, 0.8);
+    .subtle-dots {
+      background-image: radial-gradient(#E5E5EA 1px, transparent 1px);
+      background-size: 28px 28px;
     }
   </style>
 </head>
-<body class="relative flex items-center justify-between p-16 subtle-grid">
+<body class="relative flex items-center justify-between p-16 subtle-dots">
+
+  <!-- Ambient Apple Glow -->
+  <div class="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-blue-100/50 blur-3xl pointer-events-none"></div>
+  <div class="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-emerald-100/40 blur-3xl pointer-events-none"></div>
 
   <!-- Left Editorial Content (620px) -->
   <div class="w-[620px] flex flex-col justify-between h-full z-10">
     
     <!-- Top Meta Badges -->
     <div>
-      <div class="flex items-center space-x-3 mb-8">
-        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase bg-blue-50 text-blue-700 border border-blue-200">
-          <span class="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+      <div class="flex items-center space-x-2.5 mb-8">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase bg-[#0071E3]/10 text-[#0071E3] border border-[#0071E3]/20">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#0071E3]"></span>
           Meta $1M Global Hackathon
         </span>
-        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase bg-[#34C759]/10 text-[#248A3D] border border-[#34C759]/20">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#34C759]"></span>
           OpenFDA Live Connected
         </span>
       </div>
 
-      <!-- Main Headline (Stylish Contrast of Grotesque + Luxury Italic Serif) -->
-      <h1 class="text-[76px] leading-[0.92] tracking-[-0.03em] font-extrabold text-slate-900 mb-4">
-        Pharmaco<span class="serif-display italic font-normal text-blue-600 font-serif">-Llama</span>
+      <!-- Main Headline: Apple Clean Grotesque + Instrument Serif -->
+      <h1 class="text-[74px] leading-[0.92] tracking-[-0.035em] font-extrabold text-[#1D1D1F] mb-4">
+        Pharmaco<span class="serif-display italic font-normal text-[#0071E3] font-serif">-Llama</span>
       </h1>
 
-      <!-- Elegant Sub-headline -->
-      <p class="text-[23px] leading-snug font-medium text-slate-700 tracking-[-0.01em] mb-4">
+      <!-- Apple-style Sub-headline -->
+      <p class="text-[23px] leading-snug font-semibold text-[#1D1D1F] tracking-[-0.015em] mb-4">
         Autonomous Clinical Pharmacology & Polypharmacy Auditor
       </p>
 
       <!-- Editorial Summary -->
-      <p class="text-[15px] leading-relaxed text-slate-500 max-w-[540px]">
+      <p class="text-[15px] leading-relaxed text-[#86868B] max-w-[540px]">
         Eradicating fatal drug-drug interactions through multimodal prescription vision, live US OpenFDA Black Box Warnings, and CYP450 biophysical clearance simulation.
       </p>
+
+      <!-- 3 Apple Keynote Value Props -->
+      <div class="flex items-center gap-4 mt-6 text-xs text-[#424245]">
+        <div class="flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-[#0071E3]"></span>
+          <span class="font-medium">Llama 3.2 Vision OCR</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-[#34C759]"></span>
+          <span class="font-medium">US OpenFDA Black Box</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+          <span class="font-medium">CYP450 Kinetics</span>
+        </div>
+      </div>
     </div>
 
     <!-- Bottom Credits & Domain Lead Signature -->
-    <div class="pt-6 border-t border-slate-200/80 flex items-center justify-between text-[12px] text-slate-500">
+    <div class="pt-6 border-t border-[#E5E5EA] flex items-center justify-between text-[12px] text-[#86868B]">
       <div class="flex items-center gap-2">
-        <div class="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-[10px]">M</div>
-        <span>Lead: <strong class="text-slate-900 font-semibold">Md Mushfiqur Rahim</strong> • NIH-Certified in Clinical Pharmacology</span>
+        <div class="w-6 h-6 rounded-full bg-[#1D1D1F] text-white flex items-center justify-center font-bold text-[10px]">M</div>
+        <span>Lead: <strong class="text-[#1D1D1F] font-semibold">Md Mushfiqur Rahim</strong> • NIH-Certified Clinical Pharmacology</span>
       </div>
-      <span class="mono text-[11px] text-slate-600">The Sacred /truth Law</span>
+      <span class="mono text-[11px] text-[#0071E3] font-bold">The Sacred /truth Law</span>
     </div>
 
   </div>
 
   <!-- Right Floating Minimalist Clinical Artboard (420px) -->
-  <div class="w-[420px] bg-white rounded-3xl p-8 card-shadow flex flex-col justify-between h-full z-10 border border-slate-100">
+  <div class="w-[420px] bg-white rounded-3xl p-8 apple-shadow flex flex-col justify-between h-full z-10 border border-[#E5E5EA]">
     
     <!-- Card Header -->
-    <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+    <div class="flex items-center justify-between pb-4 border-b border-[#F2F2F7]">
       <div>
-        <span class="mono text-[10px] tracking-widest text-slate-600 uppercase font-bold block">CLINICAL RISK AUDIT</span>
-        <span class="text-xs text-slate-700 font-medium">Real-Time Polypharmacy Index</span>
+        <span class="mono text-[10px] tracking-widest text-[#86868B] uppercase font-bold block">CLINICAL RISK AUDIT</span>
+        <span class="text-xs text-[#1D1D1F] font-semibold">Real-Time Polypharmacy Index</span>
       </div>
-      <span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-50 text-red-600 border border-red-200">
-        Critical Conflict
+      <span class="px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#FF3B30]/10 text-[#D70015] border border-[#FF3B30]/20">
+        Critical Hazard
       </span>
     </div>
 
     <!-- Hazard Meter Hero -->
     <div class="my-4">
       <div class="flex items-baseline justify-between mb-2">
-        <span class="text-xs font-semibold text-slate-600">Hazard Severity</span>
+        <span class="text-xs font-semibold text-[#86868B]">Hazard Severity Score</span>
         <div class="flex items-baseline gap-1">
-          <span class="text-5xl font-black text-red-600 tracking-tight mono">94</span>
-          <span class="text-sm font-semibold text-slate-600 mono">/100</span>
+          <span class="text-5xl font-extrabold text-[#D70015] tracking-tight mono">94</span>
+          <span class="text-sm font-semibold text-[#86868B] mono">/100</span>
         </div>
       </div>
       <!-- Progress Bar -->
-      <div class="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
-        <div class="h-full bg-gradient-to-r from-amber-500 to-red-600 rounded-full" style="width: 94%;"></div>
+      <div class="w-full h-2 rounded-full bg-[#E5E5EA] overflow-hidden">
+        <div class="h-full bg-gradient-to-r from-amber-500 to-[#D70015] rounded-full" style="width: 94%;"></div>
       </div>
     </div>
 
     <!-- Active Identified Interaction -->
-    <div class="bg-slate-50 rounded-2xl p-4 border border-slate-100 mb-4">
-      <div class="flex items-center gap-1.5 text-[11px] font-bold text-red-600 mb-1 mono">
+    <div class="bg-[#FFF5F5] rounded-2xl p-4 border border-[#FFD0D0] mb-4">
+      <div class="flex items-center gap-1.5 text-[11px] font-bold text-[#D70015] mb-1 mono">
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
         CYP2C19 Metabolic Blockade
       </div>
-      <p class="text-xs font-bold text-slate-900">Warfarin 5mg + Omeprazole 20mg</p>
-      <p class="text-[11px] text-slate-500 mt-1 leading-normal">
-        Hepatic clearance inhibited. Relative bleeding hazard increased by <strong class="text-slate-800">4.2x</strong>.
+      <p class="text-xs font-bold text-[#1D1D1F]">Warfarin 5mg + Omeprazole 20mg</p>
+      <p class="text-[11px] text-[#6E6E73] mt-1 leading-normal">
+        Hepatic clearance inhibited. Relative bleeding hazard increased by <strong class="text-[#D70015]">4.2x</strong>.
       </p>
     </div>
 
     <!-- Pharmacokinetic Sparkline Waveform -->
-    <div class="pt-3 border-t border-slate-100">
-      <div class="flex items-center justify-between text-[10px] text-slate-600 mono mb-2 font-bold">
+    <div class="pt-3 border-t border-[#F2F2F7]">
+      <div class="flex items-center justify-between text-[10px] text-[#86868B] mono mb-2 font-bold">
         <span>PLASMA CLEARANCE Cp(t)</span>
-        <span class="text-red-600">t½: 40h → 88.5h</span>
+        <span class="text-[#D70015]">t½: 40h → 88.5h</span>
       </div>
       
       <!-- SVG Pharmacokinetic Curves -->
       <svg class="w-full h-14" viewBox="0 0 340 56" fill="none">
         <!-- Grid horizontal lines -->
-        <line x1="0" y1="55" x2="340" y2="55" stroke="#E2E8F0" stroke-width="1"/>
-        <line x1="0" y1="28" x2="340" y2="28" stroke="#F1F5F9" stroke-width="1" stroke-dasharray="2 2"/>
+        <line x1="0" y1="55" x2="340" y2="55" stroke="#E5E5EA" stroke-width="1"/>
+        <line x1="0" y1="28" x2="340" y2="28" stroke="#F2F2F7" stroke-width="1" stroke-dasharray="2 2"/>
         
-        <!-- Baseline Normal Clearance Curve (Green) -->
-        <path d="M 0 55 Q 30 15, 60 22 T 140 45 T 260 53 T 340 55" stroke="#10B981" stroke-width="2.5" stroke-linecap="round"/>
+        <!-- Baseline Normal Clearance Curve (Apple Blue) -->
+        <path d="M 0 55 Q 30 15, 60 22 T 140 45 T 260 53 T 340 55" stroke="#0071E3" stroke-width="2.5" stroke-linecap="round"/>
         
-        <!-- Inhibited Toxic Clearance Curve (Red) -->
-        <path d="M 0 55 Q 35 5, 80 10 T 180 20 T 280 32 T 340 38" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+        <!-- Inhibited Toxic Clearance Curve (Apple Red) -->
+        <path d="M 0 55 Q 35 5, 80 10 T 180 20 T 280 32 T 340 38" stroke="#FF3B30" stroke-width="2.5" stroke-linecap="round"/>
       </svg>
 
-      <div class="flex items-center justify-between text-[10px] text-slate-600 mt-1">
-        <span class="flex items-center gap-1 text-emerald-600 font-medium"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Normal Clearance</span>
-        <span class="flex items-center gap-1 text-red-600 font-medium"><span class="w-2 h-2 rounded-full bg-red-500"></span> Toxic Accumulation</span>
+      <div class="flex items-center justify-between text-[10px] text-[#86868B] mt-1">
+        <span class="flex items-center gap-1 text-[#0071E3] font-semibold"><span class="w-2 h-2 rounded-full bg-[#0071E3]"></span> Baseline Elimination</span>
+        <span class="flex items-center gap-1 text-[#D70015] font-semibold"><span class="w-2 h-2 rounded-full bg-[#FF3B30]"></span> Toxic Accumulation</span>
       </div>
     </div>
 

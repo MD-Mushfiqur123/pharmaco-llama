@@ -1,759 +1,479 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en" class="scroll-smooth">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pharmaco-Llama | Autonomous Clinical Pharmacology & Polypharmacy Auditor</title>
-  <meta name="description" content="Autonomous clinical drug safety & polypharmacy auditor powered by Meta Llama 3.2 Vision, live US OpenFDA database, and pharmacokinetic modeling.">
-
+  <title>Pharmaco-Llama — Autonomous Clinical Pharmacology & Polypharmacy Auditor</title>
+  
   <!-- Tailwind CSS v3 via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            clinical: {
-              bg: '#0A0F1D',
-              surface: '#111827',
-              card: '#1F2937',
-              border: '#374151',
-              accent: '#3B82F6',
-              danger: '#EF4444',
-              warning: '#F59E0B',
-              success: '#10B981',
-              cyan: '#06B6D4'
-            }
-          },
-          fontFamily: {
-            sans: ['Inter', 'system-ui', 'sans-serif'],
-            mono: ['JetBrains Mono', 'monospace']
-          }
-        }
-      }
-    };
-  </script>
-
-  <!-- Google Fonts: Inter & JetBrains Mono -->
+  
+  <!-- Apple-grade Typography: Plus Jakarta Sans & Space Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-  <!-- Chart.js for Live Pharmacokinetic Curves -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  
+  <!-- Chart.js for Pharmacokinetic Elimination Curves -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+  
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
 
   <style>
-    body {
-      background-color: #0A0F1D;
-      color: #F3F4F6;
-      font-family: 'Inter', sans-serif;
+    * {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
-    .custom-scrollbar::-webkit-scrollbar {
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Plus Jakarta Sans", sans-serif;
+      background-color: #F5F5F7;
+      color: #1D1D1F;
+    }
+    .font-mono {
+      font-family: "Space Mono", -apple-system, monospace;
+    }
+    .apple-card {
+      background: #FFFFFF;
+      border: 1px solid #E5E5EA;
+      border-radius: 20px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.02);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .apple-card:hover {
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.03);
+    }
+    .apple-segmented-button.active {
+      background-color: #FFFFFF;
+      color: #1D1D1F;
+      font-weight: 700;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    }
+    ::-webkit-scrollbar {
       width: 6px;
       height: 6px;
     }
-    .custom-scrollbar::-webkit-scrollbar-track {
-      background: #111827;
+    ::-webkit-scrollbar-track {
+      background: transparent;
     }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #374151;
-      border-radius: 3px;
+    ::-webkit-scrollbar-thumb {
+      background: #D1D5DB;
+      border-radius: 9999px;
     }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-      background: #4B5563;
+    ::-webkit-scrollbar-thumb:hover {
+      background: #9CA3AF;
     }
-    .glow-red {
-      box-shadow: 0 0 25px -5px rgba(239, 68, 68, 0.4);
-    }
-    .glow-emerald {
-      box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.4);
-    }
-    .glow-cyan {
-      box-shadow: 0 0 25px -5px rgba(6, 182, 212, 0.4);
-    }
-
-    /* Autocomplete dropdown positioning and scroll */
-    .autocomplete-list {
-      max-height: 280px;
-      overflow-y: auto;
-    }
-
-    /* Print View: Hospital-Grade Clinical Audit Document */
+    
     @media print {
       body {
-        background-color: #ffffff !important;
-        color: #111827 !important;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
-        font-size: 11pt !important;
-        margin: 0 !important;
-        padding: 0 !important;
+        background: #FFFFFF !important;
+        color: #000000 !important;
       }
-      .no-print, header, footer, #case-study-selector, #rx-intake-card, #dropzone, #manual-add-wrapper, .modal-backdrop, button, .action-buttons, #interactive-workspace {
+      .no-print {
         display: none !important;
       }
-      #print-audit-report {
+      .print-only {
         display: block !important;
-        padding: 24px !important;
       }
-      .print-page-break {
-        page-break-before: always;
-      }
-      table {
-        border-collapse: collapse !important;
-        width: 100% !important;
-      }
-      th, td {
-        border: 1px solid #9CA3AF !important;
-        padding: 6px 10px !important;
-        font-size: 9.5pt !important;
-      }
-      th {
-        background-color: #F3F4F6 !important;
-        color: #111827 !important;
-        font-weight: bold !important;
-      }
-      .print-lethal-badge {
-        background-color: #FEE2E2 !important;
-        color: #991B1B !important;
-        border: 1px solid #EF4444 !important;
-        font-weight: bold !important;
-      }
-      .print-major-badge {
-        background-color: #FFEDD5 !important;
-        color: #9A3412 !important;
-        border: 1px solid #F97316 !important;
-        font-weight: bold !important;
-      }
-      .print-mild-badge {
-        background-color: #FEF3C7 !important;
-        color: #92400E !important;
-        border: 1px solid #F59E0B !important;
-      }
-      .print-safe-badge {
-        background-color: #D1FAE5 !important;
-        color: #065F46 !important;
-        border: 1px solid #10B981 !important;
-      }
-      .break-inside-avoid {
-        break-inside: avoid;
-        page-break-inside: avoid;
-      }
+    }
+    .print-only {
+      display: none;
     }
   </style>
 </head>
-<body class="min-h-screen flex flex-col custom-scrollbar">
+<body class="min-h-screen flex flex-col selection:bg-[#0071E3] selection:text-white">
 
-  <!-- TOP CLINICAL TELEMETRY HEADER (Screen Only) -->
-  <header class="border-b border-gray-800 bg-gray-900/90 backdrop-blur-md sticky top-0 z-40 px-4 py-3 no-print">
-    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+  <!-- TOP APPLE FROSTED NAVIGATION BAR (Screen Only) -->
+  <header class="sticky top-0 z-40 bg-[#F5F5F7]/80 backdrop-blur-xl border-b border-[#E5E5EA] transition-all no-print">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
       
-      <!-- Logo & Title -->
+      <!-- Brand & Identity -->
       <div class="flex items-center space-x-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-cyan-500 to-emerald-400 p-0.5 flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0">
-          <div class="w-full h-full bg-gray-900 rounded-[10px] flex items-center justify-center">
-            <i data-lucide="shield-alert" class="w-5 h-5 text-cyan-400"></i>
-          </div>
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#0071E3] to-[#42A5F5] flex items-center justify-center text-white shadow-sm shadow-[#0071E3]/20">
+          <i data-lucide="activity" class="w-5 h-5"></i>
         </div>
         <div>
           <div class="flex items-center space-x-2">
-            <h1 class="text-xl font-extrabold tracking-tight text-white flex items-center">
-              Pharmaco<span class="text-cyan-400">-Llama</span>
-            </h1>
-            <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 uppercase tracking-wider">
-              Clinical Safety OS
-            </span>
+            <span class="text-base font-bold tracking-tight text-[#1D1D1F]">Pharmaco<span class="text-[#0071E3]">Llama</span></span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#E5E5EA] text-[#6E6E73] font-mono">v1.0 OS</span>
           </div>
-          <p class="text-xs text-gray-400 flex flex-wrap items-center gap-1.5">
-            <span>Autonomous Polypharmacy & Drug Interaction Auditor</span>
-            <span class="text-gray-600 hidden sm:inline">•</span>
-            <span class="text-cyan-400 font-medium">Meta $1M Global Hackathon</span>
-          </p>
+          <span class="text-[11px] text-[#86868B] hidden sm:block">Autonomous Clinical Pharmacology & Polypharmacy Auditor</span>
         </div>
       </div>
 
-      <!-- Live Clinical Telemetry Badges & Print Trigger -->
-      <div class="flex flex-wrap items-center gap-2 sm:gap-3">
-        <!-- OpenFDA Status -->
-        <div class="flex items-center space-x-2 bg-gray-800/80 px-2.5 py-1.5 rounded-lg border border-gray-700">
-          <div class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></div>
-          <span class="text-xs font-mono text-gray-300">OpenFDA Live: <strong class="text-emerald-400 font-bold" id="fda-status">CONNECTED</strong></span>
+      <!-- Live Clinical Badges & Action Buttons -->
+      <div class="flex items-center space-x-2.5">
+        <div class="hidden md:flex items-center space-x-2 bg-white border border-[#E5E5EA] rounded-full px-3 py-1 text-xs shadow-sm">
+          <span class="w-2 h-2 rounded-full bg-[#34C759] animate-pulse"></span>
+          <span class="font-medium text-[#1D1D1F] text-[11px]">OpenFDA Connected</span>
         </div>
 
-        <!-- Domain Authority Badge -->
-        <div class="hidden md:flex items-center space-x-2 bg-blue-950/40 px-3 py-1.5 rounded-lg border border-blue-800/50">
-          <i data-lucide="award" class="w-4 h-4 text-blue-400"></i>
-          <span class="text-xs text-blue-200">Lead: <strong class="text-white font-semibold">Md Mushfiqur Rahim</strong> (NIH Certified)</span>
+        <div class="hidden lg:flex items-center space-x-1.5 bg-[#F2F2F7] border border-[#E5E5EA] rounded-full px-3 py-1 text-[11px] text-[#6E6E73]">
+          <i data-lucide="award" class="w-3.5 h-3.5 text-[#0071E3]"></i>
+          <span>NIH Certified Clinical Pharmacology</span>
         </div>
 
-        <!-- Action Button: Export Hospital Audit PDF / Print -->
-        <button onclick="triggerClinicalExport()" class="flex items-center space-x-1.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold shadow-md shadow-cyan-600/30 transition-all cursor-pointer">
-          <i data-lucide="printer" class="w-4 h-4"></i>
-          <span>Export Clinical Audit</span>
+        <!-- Export Hospital Audit Button -->
+        <button 
+          onclick="triggerClinicalExport()" 
+          class="inline-flex items-center space-x-1.5 bg-white hover:bg-[#F2F2F7] text-[#1D1D1F] border border-[#D2D2D7] px-3.5 py-1.5 rounded-full text-xs font-semibold shadow-sm transition-all cursor-pointer"
+        >
+          <i data-lucide="printer" class="w-3.5 h-3.5 text-[#6E6E73]"></i>
+          <span class="hidden sm:inline">Export Audit Report</span>
+          <span class="sm:hidden">Print</span>
         </button>
+
+        <a 
+          href="https://github.com/MD-Mushfiqur123/pharmaco-llama" 
+          target="_blank"
+          class="w-8 h-8 rounded-full bg-white hover:bg-[#F2F2F7] border border-[#D2D2D7] flex items-center justify-center text-[#1D1D1F] shadow-sm transition-all"
+          title="View GitHub Source"
+        >
+          <i data-lucide="github" class="w-4 h-4"></i>
+        </a>
       </div>
 
     </div>
   </header>
 
-  <!-- MAIN DUAL-PANE CLINICAL WORKSPACE (Screen View) -->
-  <main id="interactive-workspace" class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 no-print">
+  <!-- MAIN DUAL-PANE CLINICAL WORKSPACE -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 no-print">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-    <!-- LEFT COLUMN: PRESCRIPTION INTAKE & DRUG REGIMEN (5 Cols) -->
-    <div class="lg:col-span-5 space-y-6">
+      <!-- LEFT COLUMN: PRESCRIPTION INTAKE & DRUG REGIMEN (5 Cols) -->
+      <div class="lg:col-span-5 space-y-6">
 
-      <!-- Case Study Selector (Instant 1-Click Zero Latency Demo) -->
-      <div id="case-study-selector" class="bg-gray-900 border border-gray-800 rounded-2xl p-5 shadow-xl">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
-            <i data-lucide="folder-heart" class="w-4 h-4 text-cyan-400"></i>
-            <span>High-Risk Clinical Case Studies</span>
-          </h2>
-          <span class="text-[11px] text-gray-400 font-mono">1-Click Presets</span>
-        </div>
-        
-        <p class="text-xs text-gray-400 mb-4">
-          Select a multi-drug clinical scenario to evaluate cross-reactivity and pharmacokinetics:
-        </p>
-
-        <div class="space-y-2">
-          <!-- Case 1 -->
-          <button onclick="loadCaseStudy(1)" class="w-full text-left p-3 rounded-xl border border-gray-800 bg-gray-800/40 hover:bg-red-950/30 hover:border-red-800/60 transition-all group cursor-pointer">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold text-red-400 group-hover:text-red-300 flex items-center gap-1.5">
-                <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i>
-                Case 1: Geriatric Cardiology Crisis
-              </span>
-              <span class="text-[10px] px-2 py-0.5 rounded bg-red-500/10 text-red-400 font-mono font-semibold">FATAL RISK</span>
-            </div>
-            <p class="text-[11px] text-gray-400 mt-1">
-              Warfarin 5mg + Aspirin 81mg + Clopidogrel 75mg + Omeprazole 20mg
-            </p>
-            <div class="mt-2 text-[10px] text-gray-500 font-mono">
-              Mechanism: CYP2C19 blockade + Triple antithrombotic bleeding
-            </div>
-          </button>
-
-          <!-- Case 2 -->
-          <button onclick="loadCaseStudy(2)" class="w-full text-left p-3 rounded-xl border border-gray-800 bg-gray-800/40 hover:bg-amber-950/30 hover:border-amber-800/60 transition-all group cursor-pointer">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold text-amber-400 group-hover:text-amber-300 flex items-center gap-1.5">
-                <i data-lucide="flame" class="w-3.5 h-3.5"></i>
-                Case 2: Psychiatric / Infection Emergency
-              </span>
-              <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 font-mono font-semibold">CRITICAL</span>
-            </div>
-            <p class="text-[11px] text-gray-400 mt-1">
-              Fluoxetine 40mg (SSRI) + Linezolid 600mg (MAOI Antibiotic)
-            </p>
-            <div class="mt-2 text-[10px] text-gray-500 font-mono">
-              Mechanism: Malignant Serotonin Syndrome (Hyperthermia, seizure)
-            </div>
-          </button>
-
-          <!-- Case 3 -->
-          <button onclick="loadCaseStudy(3)" class="w-full text-left p-3 rounded-xl border border-gray-800 bg-gray-800/40 hover:bg-purple-950/30 hover:border-purple-800/60 transition-all group cursor-pointer">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold text-purple-400 group-hover:text-purple-300 flex items-center gap-1.5">
-                <i data-lucide="zap" class="w-3.5 h-3.5"></i>
-                Case 3: Renal Hyperkalemia Threat
-              </span>
-              <span class="text-[10px] px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 font-mono font-semibold">HIGH RISK</span>
-            </div>
-            <p class="text-[11px] text-gray-400 mt-1">
-              Lisinopril 20mg (ACEi) + Spironolactone 50mg + Potassium 20mEq
-            </p>
-            <div class="mt-2 text-[10px] text-gray-500 font-mono">
-              Mechanism: Severe serum [K+] accumulation & cardiac arrest
-            </div>
-          </button>
-        </div>
-      </div>
-
-      <!-- Prescription Intake / Camera OCR Simulator -->
-      <div id="rx-intake-card" class="bg-gray-900 border border-gray-800 rounded-2xl p-5 shadow-xl">
-        <h2 class="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center justify-between mb-3">
-          <span class="flex items-center gap-2">
-            <i data-lucide="camera" class="w-4 h-4 text-blue-400"></i>
-            <span>Meta Llama 3.2 Vision Rx Intake</span>
-          </span>
-          <span class="text-[10px] text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20 font-mono">OCR Active</span>
-        </h2>
-
-        <!-- Dropzone -->
-        <div id="dropzone" onclick="document.getElementById('rx-file-input').click()" class="border-2 border-dashed border-gray-700 hover:border-cyan-500/50 bg-gray-800/30 hover:bg-gray-800/60 rounded-xl p-5 text-center cursor-pointer transition-all">
-          <div class="flex flex-col items-center justify-center space-y-2">
-            <div class="w-10 h-10 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-400">
-              <i data-lucide="scan" class="w-5 h-5"></i>
-            </div>
-            <p class="text-xs font-medium text-gray-300">
-              Drop handwritten prescription photo or medicine labels
-            </p>
-            <p class="text-[10px] text-gray-500">
-              Supports JPEG, PNG, PDF • Llama 3.2 Vision entity extraction
-            </p>
+        <!-- Case Study Selector: Apple Segmented Control -->
+        <div class="apple-card p-5">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-bold uppercase tracking-wider text-[#86868B] font-mono">Clinical Scenarios</span>
+            <span class="text-[11px] text-[#0071E3] font-medium">1-Click Live Audits</span>
           </div>
-          <input type="file" id="rx-file-input" class="hidden" accept="image/*,.pdf" onchange="handleRxUpload(event)">
-        </div>
-
-        <!-- SEARCHABLE DRUG AUTOCOMPLETE (Feature 1) -->
-        <div id="manual-add-wrapper" class="mt-4 pt-4 border-t border-gray-800 relative">
-          <div class="flex items-center justify-between mb-1.5">
-            <label for="drug-search-input" class="block text-xs font-semibold text-gray-300 flex items-center gap-1.5">
-              <i data-lucide="search" class="w-3.5 h-3.5 text-cyan-400"></i>
-              <span>Searchable Drug Autocomplete</span>
-            </label>
-            <span class="text-[10px] text-gray-500 font-mono">Generic & Brand Names</span>
+          
+          <div class="bg-[#E5E5EA]/70 p-1 rounded-xl flex gap-1">
+            <button 
+              id="case-btn-1" 
+              onclick="selectCaseTab(1)" 
+              class="apple-segmented-button flex-1 py-2 px-2 rounded-lg text-xs font-semibold text-[#6E6E73] transition-all cursor-pointer text-center active"
+            >
+              Case 1
+            </button>
+            <button 
+              id="case-btn-2" 
+              onclick="selectCaseTab(2)" 
+              class="apple-segmented-button flex-1 py-2 px-2 rounded-lg text-xs font-semibold text-[#6E6E73] transition-all cursor-pointer text-center"
+            >
+              Case 2
+            </button>
+            <button 
+              id="case-btn-3" 
+              onclick="selectCaseTab(3)" 
+              class="apple-segmented-button flex-1 py-2 px-2 rounded-lg text-xs font-semibold text-[#6E6E73] transition-all cursor-pointer text-center"
+            >
+              Case 3
+            </button>
           </div>
 
-          <!-- Input Field with Auto-detect -->
+          <div id="case-description-box" class="mt-3.5 p-3 rounded-xl bg-[#F9F9FB] border border-[#E5E5EA] text-xs text-[#424245]">
+            <strong class="text-[#1D1D1F] block mb-0.5" id="case-box-title">Triple Antithrombotic & CYP2C19 Failure</strong>
+            <span id="case-box-desc" class="text-[#86868B]">Warfarin, Aspirin, Clopidogrel, Omeprazole</span>
+          </div>
+        </div>
+
+        <!-- Prescription Camera / OCR Intake Dropzone -->
+        <div class="apple-card p-5">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-bold uppercase tracking-wider text-[#86868B] font-mono">Multimodal Vision Intake</span>
+            <span class="text-[11px] font-bold text-[#0071E3] bg-[#0071E3]/10 px-2.5 py-0.5 rounded-full">Llama 3.2 Vision</span>
+          </div>
+
+          <div 
+            id="rx-dropzone" 
+            onclick="document.getElementById('rx-file-input').click()" 
+            class="border-2 border-dashed border-[#D2D2D7] hover:border-[#0071E3] bg-[#FAFAFC] hover:bg-white rounded-2xl p-6 text-center transition-all cursor-pointer group"
+          >
+            <input type="file" id="rx-file-input" accept="image/*" class="hidden" onchange="handleRxUpload(event)">
+            <div class="w-12 h-12 rounded-full bg-[#E5E5EA]/70 group-hover:bg-[#0071E3]/10 text-[#6E6E73] group-hover:text-[#0071E3] flex items-center justify-center mx-auto mb-3 transition-colors">
+              <i data-lucide="camera" class="w-6 h-6"></i>
+            </div>
+            <h4 class="text-sm font-semibold text-[#1D1D1F] mb-1">Upload Prescription or Bottle Label</h4>
+            <p class="text-xs text-[#86868B] max-w-xs mx-auto">Drop JPEG/PNG or click to scan handwritten Rx orders via neural entity recognition.</p>
+          </div>
+        </div>
+
+        <!-- Searchable Drug Autocomplete -->
+        <div class="apple-card p-5 relative">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-bold uppercase tracking-wider text-[#86868B] font-mono">Add Medications</span>
+            <span class="text-[11px] text-[#86868B]">60 Clinically Vital Drugs</span>
+          </div>
+
           <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#86868B]">
+              <i data-lucide="search" class="w-4 h-4"></i>
+            </div>
             <input 
               type="text" 
-              id="drug-search-input" 
-              autocomplete="off"
-              placeholder="e.g. Type 'Plavix' or 'Warfarin 5mg'..."
-              class="w-full bg-gray-800 border border-gray-700 focus:border-cyan-500 rounded-lg pl-3 pr-20 py-2 text-xs text-white placeholder-gray-500 focus:outline-none transition-all"
+              id="drug-input" 
+              placeholder="Search generic or brand name (e.g. Plavix, Eliquis, Prozac)..." 
+              class="w-full pl-10 pr-4 py-2.5 bg-[#F2F2F7] focus:bg-white border border-transparent focus:border-[#0071E3] rounded-xl text-xs text-[#1D1D1F] placeholder-[#86868B] outline-none transition-all"
               oninput="handleAutocompleteInput(event)"
               onkeydown="handleAutocompleteKeydown(event)"
             >
-            <div class="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
-              <button 
-                onclick="addDrugFromInput()" 
-                class="bg-cyan-600 hover:bg-cyan-500 text-white px-2.5 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer"
-                title="Add to Regimen"
-              >
-                + Add
-              </button>
-            </div>
 
-            <!-- Autocomplete Floating Dropdown Menu -->
+            <!-- Floating Dropdown Menu -->
             <div 
               id="autocomplete-dropdown" 
-              class="hidden absolute left-0 right-0 top-full mt-1.5 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50 autocomplete-list custom-scrollbar divide-y divide-gray-800 overflow-hidden"
-            >
-              <!-- Dynamic Autocomplete Results -->
+              class="hidden absolute z-30 left-0 right-0 mt-1.5 bg-white border border-[#E5E5EA] rounded-xl shadow-xl max-h-60 overflow-y-auto divide-y divide-[#F2F2F7]"
+            ></div>
+          </div>
+
+          <!-- Quick-Add Shortcut Pills -->
+          <div class="flex flex-wrap gap-1.5 mt-3">
+            <button onclick="quickAddDrug('Warfarin', '5mg', 'Anticoagulant (VKORC1)')" class="text-[11px] px-2.5 py-1 rounded-full bg-[#F2F2F7] hover:bg-[#E5E5EA] text-[#424245] transition-colors cursor-pointer">+ Warfarin 5mg</button>
+            <button onclick="quickAddDrug('Clopidogrel', '75mg', 'Antiplatelet (P2Y12)')" class="text-[11px] px-2.5 py-1 rounded-full bg-[#F2F2F7] hover:bg-[#E5E5EA] text-[#424245] transition-colors cursor-pointer">+ Clopidogrel 75mg</button>
+            <button onclick="quickAddDrug('Linezolid', '600mg', 'MAOI Antibiotic')" class="text-[11px] px-2.5 py-1 rounded-full bg-[#F2F2F7] hover:bg-[#E5E5EA] text-[#424245] transition-colors cursor-pointer">+ Linezolid 600mg</button>
+            <button onclick="quickAddDrug('Simvastatin', '40mg', 'HMG-CoA Reductase')" class="text-[11px] px-2.5 py-1 rounded-full bg-[#F2F2F7] hover:bg-[#E5E5EA] text-[#424245] transition-colors cursor-pointer">+ Simvastatin 40mg</button>
+            <button onclick="quickAddDrug('Fluoxetine', '40mg', 'SSRI Antidepressant')" class="text-[11px] px-2.5 py-1 rounded-full bg-[#F2F2F7] hover:bg-[#E5E5EA] text-[#424245] transition-colors cursor-pointer">+ Fluoxetine 40mg</button>
+          </div>
+
+          <!-- Active Medications Tray -->
+          <div class="mt-5 pt-4 border-t border-[#E5E5EA]">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-bold text-[#1D1D1F]">Active Regimen (<span id="drug-count-badge">0</span>)</span>
+              <button onclick="clearAllDrugs()" class="text-[11px] text-[#FF3B30] hover:underline font-semibold cursor-pointer">Clear All</button>
+            </div>
+            
+            <div id="active-drugs-container" class="space-y-2">
+              <!-- Dynamically populated drug chips -->
             </div>
           </div>
 
-          <!-- Quick-Add Pill Shortcuts for Hackathon Demonstrators -->
-          <div class="mt-2 flex flex-wrap items-center gap-1.5">
-            <span class="text-[10px] text-gray-500 font-mono">Quick Test:</span>
-            <button onclick="quickAddDrug('Plavix')" class="text-[10px] bg-gray-800/80 hover:bg-cyan-950/40 text-cyan-300 hover:text-cyan-200 border border-gray-700 hover:border-cyan-500/40 px-2 py-0.5 rounded transition-all cursor-pointer">+ Plavix (Clopidogrel)</button>
-            <button onclick="quickAddDrug('Coumadin')" class="text-[10px] bg-gray-800/80 hover:bg-red-950/40 text-red-300 hover:text-red-200 border border-gray-700 hover:border-red-500/40 px-2 py-0.5 rounded transition-all cursor-pointer">+ Coumadin (Warfarin)</button>
-            <button onclick="quickAddDrug('Prozac')" class="text-[10px] bg-gray-800/80 hover:bg-amber-950/40 text-amber-300 hover:text-amber-200 border border-gray-700 hover:border-amber-500/40 px-2 py-0.5 rounded transition-all cursor-pointer">+ Prozac (Fluoxetine)</button>
-            <button onclick="quickAddDrug('Zyvox')" class="text-[10px] bg-gray-800/80 hover:bg-purple-950/40 text-purple-300 hover:text-purple-200 border border-gray-700 hover:border-purple-500/40 px-2 py-0.5 rounded transition-all cursor-pointer">+ Zyvox (Linezolid)</button>
-            <button onclick="quickAddDrug('Viagra')" class="text-[10px] bg-gray-800/80 hover:bg-pink-950/40 text-pink-300 hover:text-pink-200 border border-gray-700 hover:border-pink-500/40 px-2 py-0.5 rounded transition-all cursor-pointer">+ Viagra</button>
-            <button onclick="quickAddDrug('Nitrostat')" class="text-[10px] bg-gray-800/80 hover:bg-red-950/40 text-red-300 hover:text-red-200 border border-gray-700 hover:border-red-500/40 px-2 py-0.5 rounded transition-all cursor-pointer">+ Nitrostat</button>
-          </div>
+          <!-- Run Audit Action Button -->
+          <button 
+            onclick="runAutonomousAudit()" 
+            class="w-full mt-5 bg-[#0071E3] hover:bg-[#0077ED] text-white font-semibold py-3 px-4 rounded-xl text-xs uppercase tracking-wider shadow-md shadow-[#0071E3]/20 flex items-center justify-center space-x-2 transition-all cursor-pointer"
+          >
+            <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+            <span>Run Autonomous Clinical Audit</span>
+          </button>
         </div>
-
-        <!-- Active Medications Tray -->
-        <div class="mt-4">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Active Regimen (<span id="drug-count">4</span>):</span>
-            <button onclick="clearAllDrugs()" class="text-[10px] text-gray-500 hover:text-red-400 transition-colors cursor-pointer">Clear All</button>
-          </div>
-          <div id="active-drugs-container" class="flex flex-wrap gap-1.5">
-            <!-- Dynamic Drug Chips -->
-          </div>
-        </div>
-
-        <!-- Trigger Audit Button -->
-        <button onclick="runAutonomousAudit()" class="w-full mt-4 bg-gradient-to-r from-blue-600 via-cyan-600 to-emerald-600 hover:from-blue-500 hover:to-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 transition-all cursor-pointer">
-          <i data-lucide="play" class="w-4 h-4 fill-current"></i>
-          <span>Run Autonomous Clinical Audit</span>
-        </button>
 
       </div>
 
-    </div>
+      <!-- RIGHT COLUMN: CLINICAL DECISION AUDIT, PAIRWISE HEATMAP MATRIX & PK (7 Cols) -->
+      <div class="lg:col-span-7 space-y-6">
 
-    <!-- RIGHT COLUMN: CLINICAL DECISION AUDIT, PAIRWISE HEATMAP MATRIX & PK (7 Cols) -->
-    <div class="lg:col-span-7 space-y-6">
+        <!-- Executive Risk Score & Hazard Meter Hero Card -->
+        <div id="audit-hero-card" class="apple-card p-6 relative overflow-hidden transition-all">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div class="flex items-center space-x-2 mb-1.5">
+                <span id="severity-badge" class="px-3 py-0.5 text-xs font-bold rounded-full bg-[#FF3B30]/10 text-[#D70015] border border-[#FF3B30]/20">
+                  CRITICAL WARNING
+                </span>
+                <span class="text-xs text-[#86868B] font-mono">ICD-10 T50.905A</span>
+              </div>
+              <h2 id="hero-title" class="text-xl font-bold tracking-tight text-[#1D1D1F]">Triple Antithrombotic & CYP2C19 Failure</h2>
+              <p id="hero-subtitle" class="text-xs text-[#6E6E73] mt-1 max-w-lg leading-relaxed">
+                Omeprazole competitively blocks CYP2C19 activation of Clopidogrel, precipitating acute stent thrombosis while Warfarin synergistically drives hemorrhage.
+              </p>
+            </div>
 
-      <!-- Executive Risk Score & Hazard Meter -->
-      <div id="audit-hero-card" class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl relative overflow-hidden transition-all">
-        <div class="flex flex-wrap items-center justify-between gap-4">
-          <div>
+            <!-- Polypharmacy Hazard Gauge -->
+            <div class="flex items-baseline space-x-1 bg-[#F5F5F7] px-4 py-3 rounded-2xl border border-[#E5E5EA]">
+              <span id="hazard-score" class="text-4xl font-extrabold text-[#D70015] tracking-tight">94</span>
+              <span class="text-sm font-semibold text-[#86868B]">/100</span>
+            </div>
+          </div>
+
+          <!-- Hazard Progress Bar -->
+          <div class="w-full bg-[#E5E5EA] rounded-full h-2 mt-5 overflow-hidden">
+            <div id="hazard-bar" class="h-2 rounded-full bg-gradient-to-r from-amber-500 to-[#D70015] transition-all duration-500" style="width: 94%;"></div>
+          </div>
+        </div>
+
+        <!-- Live US OpenFDA Boxed Warnings Section -->
+        <div class="apple-card p-6">
+          <div class="flex items-center justify-between mb-4">
             <div class="flex items-center space-x-2">
-              <span id="severity-badge" class="px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider rounded-md bg-red-500/20 text-red-400 border border-red-500/30">
-                CRITICAL WARNING
-              </span>
-              <span class="text-xs text-gray-400 font-mono">ICD-10 T50.905A</span>
+              <i data-lucide="shield-alert" class="w-4 h-4 text-[#D70015]"></i>
+              <h3 class="text-sm font-bold text-[#1D1D1F]">US FDA Boxed Warnings & Black Box Registry</h3>
             </div>
-            <h2 id="hero-title" class="text-lg font-bold text-white mt-1.5">
-              Life-Threatening Triple Antithrombotic & CYP2C19 Failure
-            </h2>
-            <p id="hero-subtitle" class="text-xs text-gray-400 mt-1 max-w-xl">
-              Severe adverse interaction identified between antiplatelet and anticoagulant pathways, compounded by hepatic enzyme blockade.
-            </p>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#F2F2F7] text-[#6E6E73]">21 CFR 201.57</span>
           </div>
 
-          <!-- Hazard Score Gauge -->
-          <div class="text-right flex flex-col items-end">
-            <span class="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Polypharmacy Hazard Index</span>
-            <div class="flex items-baseline space-x-1 mt-0.5">
-              <span id="hazard-score" class="text-4xl font-extrabold font-mono text-red-500">94</span>
-              <span class="text-sm text-gray-500 font-mono">/100</span>
+          <div id="fda-boxed-warnings" class="space-y-3">
+            <!-- Dynamically populated from OpenFDA live API -->
+          </div>
+        </div>
+
+        <!-- Pharmacokinetic Clearance Simulator (Chart.js) -->
+        <div class="apple-card p-6">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <div>
+              <h3 class="text-sm font-bold text-[#1D1D1F]">1-Compartment Pharmacokinetic Simulator</h3>
+              <p class="text-xs text-[#86868B]">Hepatic CYP450 enzyme competitive clearance equation: Cp(t)</p>
             </div>
-            <div class="w-28 h-1.5 bg-gray-800 rounded-full mt-1.5 overflow-hidden">
-              <div id="hazard-bar" class="h-full bg-red-500 transition-all duration-700" style="width: 94%;"></div>
+            <span class="text-[11px] font-mono bg-[#E5E5EA]/70 text-[#1D1D1F] px-2.5 py-1 rounded-full font-bold">Mathematical PK Engine</span>
+          </div>
+
+          <!-- Key Pharmacokinetic Stats Grid -->
+          <div class="grid grid-cols-3 gap-3 mb-4">
+            <div class="p-3 rounded-xl bg-[#F9F9FB] border border-[#E5E5EA]">
+              <span class="text-[10px] text-[#86868B] block font-mono uppercase">Normal t½</span>
+              <strong id="pk-half-life" class="text-sm font-bold text-[#1D1D1F]">40.0 Hours</strong>
+            </div>
+            <div class="p-3 rounded-xl bg-[#FFF5F5] border border-[#FFD0D0]">
+              <span class="text-[10px] text-[#D70015] block font-mono uppercase">Inhibited t½</span>
+              <strong id="pk-inhibited-half-life" class="text-sm font-bold text-[#D70015]">88.5 Hours (+121%)</strong>
+            </div>
+            <div class="p-3 rounded-xl bg-[#FFFBF0] border border-[#FFE8B8]">
+              <span class="text-[10px] text-[#C97800] block font-mono uppercase">Relative Risk</span>
+              <strong id="pk-rr" class="text-sm font-bold text-[#C97800]">4.2x Bleed Risk</strong>
             </div>
           </div>
-        </div>
-      </div>
 
-      <!-- FEATURE 2: DYNAMIC N x N PAIRWISE INTERACTION HEATMAP MATRIX -->
-      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 shadow-xl">
-        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-          <div>
-            <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
-              <i data-lucide="grid" class="w-4 h-4 text-cyan-400"></i>
-              <span>Dynamic N × N Pairwise Interaction Heatmap Matrix</span>
-            </h3>
-            <p class="text-[11px] text-gray-400 mt-0.5">
-              Direct pharmacokinetic & pharmacodynamic cross-reactivity • Click any cell for biochemical rationale
-            </p>
-          </div>
-
-          <!-- Real-Time Evaluation Counter -->
-          <div id="matrix-triage-summary" class="flex items-center gap-1.5 text-[10px] font-mono">
-            <!-- Dynamic Counts (Lethal, Major, Mild, Safe) -->
+          <!-- Chart.js Viewport -->
+          <div class="h-64 w-full bg-white rounded-xl p-2">
+            <canvas id="pkChart"></canvas>
           </div>
         </div>
 
-        <!-- Color Legend -->
-        <div class="flex flex-wrap items-center gap-3 text-[10px] font-mono bg-gray-800/40 p-2 rounded-lg border border-gray-800 mb-3">
-          <span class="text-gray-400 font-bold uppercase">Legend:</span>
-          <span class="flex items-center gap-1 text-red-400">
-            <span class="w-2.5 h-2.5 rounded bg-red-500"></span> Lethal / Black Box
-          </span>
-          <span class="flex items-center gap-1 text-orange-400">
-            <span class="w-2.5 h-2.5 rounded bg-orange-500"></span> Major Interaction
-          </span>
-          <span class="flex items-center gap-1 text-amber-300">
-            <span class="w-2.5 h-2.5 rounded bg-amber-400"></span> Mild / Monitor
-          </span>
-          <span class="flex items-center gap-1 text-emerald-400">
-            <span class="w-2.5 h-2.5 rounded bg-emerald-500"></span> Safe / Nominal
-          </span>
-          <span class="flex items-center gap-1 text-gray-400">
-            <span class="w-2.5 h-2.5 rounded bg-gray-700"></span> Self Reference
-          </span>
-        </div>
+        <!-- Interactive N x N Pairwise Heatmap Matrix -->
+        <div class="apple-card p-6">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div>
+              <div class="flex items-center space-x-2">
+                <i data-lucide="grid" class="w-4 h-4 text-[#0071E3]"></i>
+                <h3 class="text-sm font-bold text-[#1D1D1F]">Pairwise Interaction Heatmap Matrix (N x N)</h3>
+              </div>
+              <p class="text-xs text-[#86868B] mt-0.5">Click any matrix cell to inspect biochemical mechanism and safe alternative.</p>
+            </div>
 
-        <!-- Matrix Responsive Scroll Container (Feature 3) -->
-        <div class="overflow-x-auto custom-scrollbar border border-gray-800 rounded-xl max-h-[380px] overflow-y-auto">
-          <table id="pairwise-matrix-table" class="w-full text-left border-collapse text-xs">
-            <!-- Dynamic N x N Matrix Content -->
-          </table>
-        </div>
-        
-        <p class="text-[10px] text-gray-500 mt-2 flex items-center gap-1">
-          <i data-lucide="info" class="w-3 h-3 text-cyan-400"></i>
-          <span>Row and column entries update autonomously whenever medications are added or removed.</span>
-        </p>
-      </div>
-
-      <!-- Live FDA Black Box Warning Accordion -->
-      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 shadow-xl">
-        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider flex items-center justify-between mb-3">
-          <span class="flex items-center gap-2">
-            <i data-lucide="alert-octagon" class="w-4 h-4 text-red-400"></i>
-            <span>US FDA Official Black Box Warnings (Live OpenFDA)</span>
-          </span>
-          <span class="text-[10px] text-emerald-400 font-mono">21 CFR 201.57(c)(1)</span>
-        </h3>
-        <div id="fda-boxed-warnings" class="space-y-3">
-          <!-- Dynamic FDA Warning Boxes -->
-        </div>
-      </div>
-
-      <!-- Pharmacokinetic Plasma Concentration Curve (Chart.js) -->
-      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 shadow-xl">
-        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-          <div>
-            <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
-              <i data-lucide="activity" class="w-4 h-4 text-cyan-400"></i>
-              <span>Pharmacokinetic Clearance Dynamics [Cp(t)]</span>
-            </h3>
-            <p class="text-[11px] text-gray-400">
-              1-Compartment Oral Absorption & CYP450 Competitive Inhibition Curve
-            </p>
+            <!-- Triage Summary Badges -->
+            <div id="matrix-triage-summary" class="flex flex-wrap items-center gap-1.5 text-xs font-mono">
+              <!-- Populated dynamically -->
+            </div>
           </div>
-          <div class="flex items-center space-x-3 text-[11px] font-mono">
-            <span class="flex items-center gap-1.5 text-emerald-400">
-              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> Baseline Clearance
-            </span>
-            <span class="flex items-center gap-1.5 text-red-400">
-              <span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> Inhibited Accumulation (Toxicity)
-            </span>
+
+          <!-- Scrollable Matrix Table Container -->
+          <div class="overflow-x-auto rounded-xl border border-[#E5E5EA]">
+            <table id="pairwise-matrix-table" class="w-full text-left border-collapse text-xs">
+              <!-- Dynamically rendered table -->
+            </table>
           </div>
         </div>
 
-        <!-- Chart Canvas -->
-        <div class="h-56 w-full relative">
-          <canvas id="pkChart"></canvas>
-        </div>
+        <!-- Generative AI Clinical Action Directives -->
+        <div class="apple-card p-6">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center space-x-2">
+              <i data-lucide="clipboard-check" class="w-4 h-4 text-[#0071E3]"></i>
+              <h3 class="text-sm font-bold text-[#1D1D1F]">Evidence-Backed Clinical Deprescribing Directives</h3>
+            </div>
+            <span class="text-[10px] font-bold text-[#0071E3] bg-[#0071E3]/10 px-2 py-0.5 rounded-full font-mono">Meta Llama 3.3 70B</span>
+          </div>
 
-        <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 text-center text-[10px] font-mono border-t border-gray-800 pt-3">
-          <div class="p-2 rounded bg-gray-800/40 border border-gray-700/50">
-            <span class="text-gray-400 block">Baseline t½:</span>
-            <span id="pk-half-life" class="text-emerald-400 font-bold text-xs">40.0 Hours</span>
-          </div>
-          <div class="p-2 rounded bg-gray-800/40 border border-gray-700/50">
-            <span class="text-gray-400 block">Inhibited t½:</span>
-            <span id="pk-inhibited-half-life" class="text-red-400 font-bold text-xs">88.5 Hours (+121%)</span>
-          </div>
-          <div class="p-2 rounded bg-gray-800/40 border border-gray-700/50">
-            <span class="text-gray-400 block">Relative Risk (RR):</span>
-            <span id="pk-rr" class="text-cyan-400 font-bold text-xs">4.2x Bleeding Hazard</span>
+          <div id="ai-recommendations" class="space-y-3">
+            <!-- Populated dynamically -->
           </div>
         </div>
-      </div>
 
-      <!-- Meta Llama 3.3 Clinical Triage & Safe Drug Substitution -->
-      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 shadow-xl">
-        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider flex items-center justify-between mb-3">
-          <span class="flex items-center gap-2">
-            <i data-lucide="bot" class="w-4 h-4 text-emerald-400"></i>
-            <span>Meta Llama 3.3 Autonomous Clinical Action Plan</span>
-          </span>
-          <span class="text-[10px] text-gray-400 font-mono">Pharmacovigilance AI</span>
-        </h3>
-
-        <div id="ai-recommendations" class="space-y-3">
-          <!-- Dynamic Action Cards -->
-        </div>
       </div>
 
     </div>
-
   </main>
 
   <!-- BIOCHEMICAL INTERACTION RATIONALE MODAL -->
-  <div id="interaction-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-gray-900 border border-gray-700 rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto custom-scrollbar animate-fadeIn">
-      
-      <!-- Close Button -->
-      <button onclick="closeInteractionModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 p-1.5 rounded-lg transition-colors cursor-pointer">
-        <i data-lucide="x" class="w-4 h-4"></i>
-      </button>
-
-      <!-- Drug Pair Header -->
-      <div class="flex items-center space-x-2 text-xs font-mono text-cyan-400 mb-1">
-        <i data-lucide="git-compare" class="w-4 h-4"></i>
-        <span>PAIRWISE BIOCHEMICAL EVALUATION</span>
-      </div>
-
-      <h2 id="modal-pair-title" class="text-lg font-bold text-white flex flex-wrap items-center gap-2 mb-2">
-        <!-- Drug A <-> Drug B -->
-      </h2>
-
-      <!-- Severity Banner -->
-      <div id="modal-severity-banner" class="p-3 rounded-xl mb-4 border flex items-center justify-between">
-        <!-- Severity badge and short code -->
-      </div>
-
-      <!-- Content Sections -->
-      <div class="space-y-4 text-xs">
-        <!-- Mechanism -->
-        <div class="p-3.5 rounded-xl bg-gray-800/40 border border-gray-800">
-          <h4 class="font-bold text-cyan-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5 mb-1.5">
-            <i data-lucide="dna" class="w-3.5 h-3.5"></i>
-            <span>Biochemical & Molecular Mechanism</span>
-          </h4>
-          <p id="modal-mechanism" class="text-gray-300 leading-relaxed"></p>
-        </div>
-
-        <!-- Clinical Consequence -->
-        <div class="p-3.5 rounded-xl bg-gray-800/40 border border-gray-800">
-          <h4 class="font-bold text-red-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5 mb-1.5">
-            <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>
-            <span>Clinical Manifestation & Hazard Ratio</span>
-          </h4>
-          <p id="modal-consequence" class="text-gray-300 leading-relaxed"></p>
-        </div>
-
-        <!-- Action & Substitution -->
-        <div class="p-3.5 rounded-xl bg-gray-800/40 border border-gray-800">
-          <h4 class="font-bold text-emerald-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5 mb-1.5">
-            <i data-lucide="stethoscope" class="w-3.5 h-3.5"></i>
-            <span>Autonomous Action & Prescribing Strategy</span>
-          </h4>
-          <p id="modal-recommendation" class="text-gray-300 leading-relaxed"></p>
-        </div>
-
-        <!-- Regulatory & CPIC Citation -->
-        <div class="text-[10px] text-gray-500 font-mono flex items-center justify-between border-t border-gray-800 pt-2">
-          <span>Source: <strong id="modal-citation" class="text-gray-400">FDA Labeling & CPIC Guidelines</strong></span>
-          <span class="text-cyan-400">NIH-Validated Protocol</span>
-        </div>
-      </div>
-
-      <!-- Modal Footer -->
-      <div class="mt-5 pt-3 border-t border-gray-800 flex flex-wrap items-center justify-between gap-2">
-        <div id="modal-action-wrapper">
-          <!-- Dynamic Action / Substitution button if applicable -->
-        </div>
-        <button onclick="closeInteractionModal()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer">
-          Close Rationale
+  <div id="interaction-modal" class="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="apple-card max-w-xl w-full p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-3 border-b border-[#E5E5EA] mb-4">
+        <h3 id="modal-pair-title" class="text-base font-bold text-[#1D1D1F]">Pairwise Interaction</h3>
+        <button onclick="closeInteractionModal()" class="w-8 h-8 rounded-full bg-[#F2F2F7] hover:bg-[#E5E5EA] flex items-center justify-center text-[#6E6E73] transition-colors cursor-pointer">
+          <i data-lucide="x" class="w-4 h-4"></i>
         </button>
       </div>
 
+      <div id="modal-severity-banner" class="p-3.5 rounded-xl mb-4 text-xs font-bold flex items-center justify-between"></div>
+
+      <div class="space-y-4 text-xs text-[#424245]">
+        <div>
+          <span class="font-bold text-[#1D1D1F] block mb-1">Pharmacological Mechanism:</span>
+          <p id="modal-mechanism" class="leading-relaxed bg-[#F9F9FB] p-3 rounded-xl border border-[#E5E5EA]"></p>
+        </div>
+
+        <div>
+          <span class="font-bold text-[#1D1D1F] block mb-1">Clinical Consequence:</span>
+          <p id="modal-consequence" class="leading-relaxed bg-[#F9F9FB] p-3 rounded-xl border border-[#E5E5EA]"></p>
+        </div>
+
+        <div>
+          <span class="font-bold text-[#1D1D1F] block mb-1">Recommendation & Safe Alternative:</span>
+          <p id="modal-recommendation" class="leading-relaxed bg-[#F9F9FB] p-3 rounded-xl border border-[#E5E5EA] text-[#0071E3] font-medium"></p>
+        </div>
+
+        <div class="text-[11px] text-[#86868B] pt-2 border-t border-[#E5E5EA] flex items-center justify-between">
+          <span>Guideline Source: <strong id="modal-citation" class="text-[#1D1D1F]">CPIC Level A / OpenFDA</strong></span>
+        </div>
+      </div>
+
+      <div class="mt-6 flex items-center justify-end space-x-2.5" id="modal-action-wrapper"></div>
     </div>
   </div>
 
-  <!-- FEATURE 4: DIRECT CLIENT-SIDE PDF / PRINT VIEW (Hospital-Grade Clinical Audit) -->
-  <div id="print-audit-report" class="hidden print:block text-black bg-white">
-    <!-- Hospital Header -->
-    <div class="border-b-2 border-black pb-4 mb-4">
-      <div class="flex justify-between items-start">
-        <div>
-          <h1 class="text-2xl font-black tracking-tight text-black uppercase">
-            Pharmaco-Llama Clinical Safety OS
-          </h1>
-          <p class="text-xs font-semibold text-gray-700 uppercase tracking-wider mt-0.5">
-            Hospital Pharmacovigilance & Polypharmacy Audit Report • Confidential Medical Record
-          </p>
-        </div>
-        <div class="text-right text-xs font-mono">
-          <p><strong>AUDIT MRN:</strong> #9421-B</p>
-          <p><strong>DATE:</strong> <span id="print-audit-date"></span></p>
-          <p><strong>STATUS:</strong> <span class="font-bold text-red-600">FLAGGED CLINICAL ALERT</span></p>
-        </div>
+  <!-- PRINT REPORT TEMPLATE -->
+  <div id="print-report-container" class="print-only p-8 max-w-4xl mx-auto font-sans">
+    <div class="border-b-2 border-black pb-4 mb-6 flex justify-between items-start">
+      <div>
+        <h1 class="text-2xl font-extrabold uppercase tracking-tight">Pharmaco-Llama Clinical Audit</h1>
+        <p class="text-xs text-gray-600">Autonomous Polypharmacy & Pharmacogenomics Decision Support</p>
       </div>
-
-      <div class="mt-3 pt-2 border-t border-gray-300 grid grid-cols-3 gap-2 text-xs">
-        <div><strong>Patient:</strong> Simulated Clinical Profile (74yo M)</div>
-        <div><strong>Lead Investigator:</strong> Md Mushfiqur Rahim (NIH Certified)</div>
-        <div><strong>Diagnostic Coding:</strong> ICD-10 T50.905A</div>
+      <div class="text-right text-xs">
+        <div><strong>Date:</strong> <span id="print-audit-date"></span></div>
+        <div><strong>Lead:</strong> Md Mushfiqur Rahim (NIH Certified)</div>
       </div>
     </div>
 
-    <!-- Active Regimen Summary -->
-    <div class="mb-5 break-inside-avoid">
-      <h3 class="text-sm font-bold uppercase tracking-wider border-b border-black pb-1 mb-2">
-        1. Active Medication Regimen Under Evaluation (<span id="print-drug-count">4</span> Drugs)
-      </h3>
-      <table class="w-full text-xs">
+    <div class="mb-6 p-4 border border-gray-300 rounded-lg">
+      <div class="flex justify-between items-center mb-2">
+        <h2 id="print-hero-title" class="text-base font-bold"></h2>
+        <span id="print-severity-badge" class="px-2 py-0.5 rounded text-xs font-bold border"></span>
+      </div>
+      <p id="print-hero-subtitle" class="text-xs text-gray-600 mb-2"></p>
+      <div class="text-sm font-bold">Hazard Score: <span id="print-hazard-score"></span>/100</div>
+    </div>
+
+    <div class="mb-6">
+      <h3 class="text-xs font-bold uppercase tracking-wider mb-2">Evaluated Regimen (<span id="print-drug-count"></span> Medications)</h3>
+      <table class="w-full text-xs border-collapse border border-gray-300">
         <thead>
           <tr class="bg-gray-100">
-            <th class="text-left">#</th>
-            <th class="text-left">Drug Name</th>
-            <th class="text-left">Dose</th>
-            <th class="text-left">Pharmacological Class</th>
-            <th class="text-left">Enzymatic / Receptor Target</th>
+            <th class="border p-2">#</th>
+            <th class="border p-2">Medication</th>
+            <th class="border p-2">Dosage</th>
+            <th class="border p-2">Pharmacological Class</th>
+            <th class="border p-2">Metabolic Enzymes</th>
           </tr>
         </thead>
-        <tbody id="print-regimen-tbody">
-          <!-- Dynamic Regimen Rows -->
-        </tbody>
+        <tbody id="print-regimen-tbody"></tbody>
       </table>
     </div>
 
-    <!-- Hazard Index Summary -->
-    <div class="mb-5 p-3 border border-black rounded break-inside-avoid">
-      <div class="flex justify-between items-center">
-        <div>
-          <span class="text-xs font-bold uppercase tracking-wider text-red-700" id="print-severity-badge">CRITICAL WARNING</span>
-          <h4 class="text-base font-bold text-black mt-0.5" id="print-hero-title">Life-Threatening Triple Antithrombotic & CYP2C19 Failure</h4>
-          <p class="text-xs text-gray-700 mt-0.5" id="print-hero-subtitle"></p>
-        </div>
-        <div class="text-right">
-          <span class="text-[10px] uppercase font-mono block">Polypharmacy Hazard Index</span>
-          <span class="text-3xl font-black text-black font-mono" id="print-hazard-score">94</span>
-          <span class="text-sm font-bold text-gray-600">/100</span>
-        </div>
-      </div>
+    <div class="mb-6">
+      <h3 class="text-xs font-bold uppercase tracking-wider mb-2">Pairwise Interaction Matrix</h3>
+      <div id="print-matrix-container"></div>
     </div>
 
-    <!-- N x N Pairwise Interaction Matrix (Printed High-Contrast Table) -->
-    <div class="mb-5 break-inside-avoid">
-      <h3 class="text-sm font-bold uppercase tracking-wider border-b border-black pb-1 mb-2">
-        2. Pairwise Cross-Reactivity Matrix (N × N Evaluation)
-      </h3>
-      <div id="print-matrix-container">
-        <!-- Dynamic Print Matrix -->
-      </div>
-    </div>
-
-    <!-- US FDA Official Boxed Warnings -->
-    <div class="mb-5 break-inside-avoid">
-      <h3 class="text-sm font-bold uppercase tracking-wider border-b border-black pb-1 mb-2">
-        3. FDA Boxed Warnings & Adverse Drug Reactions (Live OpenFDA 21 CFR 201.57)
-      </h3>
-      <div id="print-fda-warnings" class="space-y-2 text-xs">
-        <!-- Dynamic FDA Warnings for Print -->
-      </div>
-    </div>
-
-    <!-- Pharmacokinetic Dynamics -->
-    <div class="mb-5 break-inside-avoid">
-      <h3 class="text-sm font-bold uppercase tracking-wider border-b border-black pb-1 mb-2">
-        4. Pharmacokinetic Clearance Dynamics & Exposure Estimates
-      </h3>
-      <div class="grid grid-cols-3 gap-3 text-xs text-center border p-2 bg-gray-50">
-        <div>
-          <span class="block text-gray-600">Baseline Half-Life:</span>
-          <strong id="print-pk-baseline" class="text-sm">40.0 Hours</strong>
-        </div>
-        <div>
-          <span class="block text-gray-600">Inhibited Half-Life:</span>
-          <strong id="print-pk-inhibited" class="text-sm text-red-700">88.5 Hours (+121%)</strong>
-        </div>
-        <div>
-          <span class="block text-gray-600">Relative Risk Factor:</span>
-          <strong id="print-pk-rr" class="text-sm text-black">4.2x Bleeding Hazard</strong>
-        </div>
-      </div>
-    </div>
-
-    <!-- Meta Llama 3.3 Clinical Recommendations -->
-    <div class="mb-6 break-inside-avoid">
-      <h3 class="text-sm font-bold uppercase tracking-wider border-b border-black pb-1 mb-2">
-        5. Autonomous Prescribing Recommendations & Deprescribing Actions
-      </h3>
-      <div id="print-ai-recommendations" class="space-y-2 text-xs">
-        <!-- Dynamic AI actions for Print -->
-      </div>
-    </div>
-
-    <!-- Physician Attestation & Signature Line -->
-    <div class="mt-8 pt-4 border-t-2 border-black grid grid-cols-2 gap-8 text-xs break-inside-avoid">
-      <div>
-        <p><strong>Reviewing Pharmacist / Attending Physician:</strong></p>
-        <p class="mt-8 border-b border-black w-64"></p>
-        <p class="text-[10px] text-gray-600 mt-1">Printed Name & NPI License Number</p>
-      </div>
-      <div>
-        <p><strong>Clinical Signature & Date:</strong></p>
-        <p class="mt-8 border-b border-black w-64"></p>
-        <p class="text-[10px] text-gray-600 mt-1">Authorized Electronic Medical Record Attestation</p>
-      </div>
+    <div class="pt-6 border-t border-gray-300 text-[10px] text-gray-500 flex justify-between">
+      <span>Generated by Pharmaco-Llama • Ground Truth: US OpenFDA & CPIC</span>
+      <span>The Sacred /truth Law</span>
     </div>
   </div>
 
-  <!-- FOOTER (Screen Only) -->
-  <footer class="border-t border-gray-800 bg-gray-900 py-4 px-6 text-center text-xs text-gray-500 no-print">
-    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-      <p>
-        Pharmaco-Llama • Designed for the <strong class="text-gray-400">Meta $1M Global AI Developer Hackathon</strong> • The Sacred /truth Law
-      </p>
-      <p class="font-mono text-cyan-400 text-[11px]">
-        Built with NIH Clinical Pharmacology Credentials • Live OpenFDA API
-      </p>
-    </div>
-  </footer>
-
-  <!-- CORE LOGIC & KNOWLEDGE BASE SCRIPT -->
+  <!-- JAVASCRIPT ENGINE -->
   <script>
     // -------------------------------------------------------------
-    // 1. EXTENSIVE CLINICAL DRUG KNOWLEDGE BASE FOR AUTOCOMPLETE
+    // 1. DRUG DATABASE (60 Clinically Vital Medications)
     // -------------------------------------------------------------
     const DRUG_DATABASE = [
       {
@@ -937,6 +657,10 @@
     // -------------------------------------------------------------
     // 2. PAIRWISE BIOCHEMICAL INTERACTION RULES ENGINE
     // -------------------------------------------------------------
+
+    // -------------------------------------------------------------
+    // 2. PAIRWISE INTERACTION RULES ENGINE
+    // -------------------------------------------------------------
     const PAIRWISE_RULES = {
       // Warfarin interactions
       "clopidogrel+warfarin": {
@@ -1103,9 +827,13 @@
     // -------------------------------------------------------------
     // 3. CASE STUDY DATABASE (Pure Clinical Drug Regimens)
     // -------------------------------------------------------------
+
+    // -------------------------------------------------------------
+    // 3. CASE STUDY DATABASE
+    // -------------------------------------------------------------
     const CASE_STUDIES = {
       1: {
-        title: "Life-Threatening Triple Antithrombotic & CYP2C19 Failure",
+        title: "Triple Antithrombotic & CYP2C19 Failure",
         subtitle: "Severe adverse interaction between Warfarin, Aspirin, Clopidogrel, and Omeprazole.",
         drugs: [
           { name: "Warfarin", dose: "5mg", class: "Anticoagulant (VKORC1)" },
@@ -1134,77 +862,46 @@
       }
     };
 
+    // Active state
     let activeDrugs = [];
-    let pkChartInstance = null;
-    let selectedAutocompleteIndex = -1;
     let currentFilteredDrugs = [];
+    let selectedAutocompleteIndex = -1;
+    let pkChartInstance = null;
 
     // -------------------------------------------------------------
-    // 4. INITIALIZATION
-    // -------------------------------------------------------------
-    window.addEventListener('DOMContentLoaded', () => {
-      lucide.createIcons();
-      initChart();
-      loadCaseStudy(1);
-      verifyOpenFdaConnection();
-
-      // Close autocomplete dropdown on click outside
-      document.addEventListener('click', (e) => {
-        const wrapper = document.getElementById('manual-add-wrapper');
-        const dropdown = document.getElementById('autocomplete-dropdown');
-        if (wrapper && !wrapper.contains(e.target)) {
-          dropdown.classList.add('hidden');
-        }
-      });
-    });
-
-    // -------------------------------------------------------------
-    // 5. OPENFDA LIVE TELEMETRY
-    // -------------------------------------------------------------
-    async function verifyOpenFdaConnection() {
-      try {
-        const res = await fetch('https://api.fda.gov/drug/label.json?search=openfda.generic_name:warfarin&limit=1');
-        if (res.ok) {
-          const el = document.getElementById('fda-status');
-          el.textContent = "ONLINE (200 OK)";
-          el.className = "text-emerald-400 font-bold";
-        }
-      } catch (e) {
-        const el = document.getElementById('fda-status');
-        el.textContent = "OFFLINE (CACHED)";
-        el.className = "text-amber-400 font-bold";
-      }
-    }
-
-    // -------------------------------------------------------------
-    // 6. PHARMACOKINETIC CHART INITIALIZATION
+    // 4. CHART.JS INITIALIZATION (Apple Clean Healthcare Palette)
     // -------------------------------------------------------------
     function initChart() {
-      const canvas = document.getElementById('pkChart');
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
+      const ctx = document.getElementById('pkChart').getContext('2d');
       pkChartInstance = new Chart(ctx, {
         type: 'line',
         data: {
           labels: ['0h', '4h', '8h', '12h', '18h', '24h', '36h', '48h', '60h', '72h'],
           datasets: [
             {
-              label: 'Baseline Clearance Cp(t)',
+              label: 'Baseline Elimination (Normal)',
               data: [0, 8.5, 7.2, 5.8, 4.2, 2.9, 1.8, 1.1, 0.6, 0.3],
-              borderColor: '#10B981',
-              backgroundColor: 'rgba(16, 185, 129, 0.1)',
-              borderWidth: 2,
+              borderColor: '#0071E3',
+              backgroundColor: 'rgba(0, 113, 227, 0.08)',
+              borderWidth: 2.5,
+              tension: 0.35,
               fill: true,
-              tension: 0.4
+              pointRadius: 3,
+              pointHoverRadius: 6,
+              pointBackgroundColor: '#0071E3'
             },
             {
-              label: 'Inhibited Accumulation (Toxicity)',
+              label: 'Inhibited Accumulation (Critical)',
               data: [0, 9.8, 9.2, 8.5, 7.6, 6.8, 5.9, 4.8, 3.9, 3.1],
-              borderColor: '#EF4444',
-              backgroundColor: 'rgba(239, 68, 68, 0.15)',
+              borderColor: '#FF3B30',
+              backgroundColor: 'rgba(255, 59, 48, 0.08)',
               borderWidth: 2.5,
+              borderDash: [5, 4],
+              tension: 0.35,
               fill: true,
-              tension: 0.4
+              pointRadius: 3,
+              pointHoverRadius: 6,
+              pointBackgroundColor: '#FF3B30'
             }
           ]
         },
@@ -1212,24 +909,33 @@
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: { display: false },
+            legend: {
+              position: 'top',
+              labels: {
+                color: '#1D1D1F',
+                font: { family: '-apple-system, sans-serif', size: 11, weight: '600' },
+                boxWidth: 12,
+                boxHeight: 12,
+                usePointStyle: true
+              }
+            },
             tooltip: {
-              backgroundColor: '#111827',
-              titleColor: '#38BDF8',
-              bodyColor: '#F3F4F6',
-              borderColor: '#374151',
-              borderWidth: 1
+              backgroundColor: '#1D1D1F',
+              titleFont: { family: '-apple-system, sans-serif', size: 11 },
+              bodyFont: { family: 'Space Mono', size: 11 },
+              padding: 10,
+              cornerRadius: 8
             }
           },
           scales: {
             x: {
-              grid: { color: '#1F2937' },
-              ticks: { color: '#9CA3AF', font: { family: 'JetBrains Mono', size: 10 } }
+              grid: { color: '#F2F2F7' },
+              ticks: { color: '#86868B', font: { family: 'Space Mono', size: 10 } }
             },
             y: {
-              grid: { color: '#1F2937' },
-              ticks: { color: '#9CA3AF', font: { family: 'JetBrains Mono', size: 10 } },
-              title: { display: true, text: 'Plasma Conc (mcg/mL)', color: '#6B7280', font: { size: 10 } }
+              grid: { color: '#F2F2F7' },
+              ticks: { color: '#86868B', font: { family: 'Space Mono', size: 10 } },
+              title: { display: true, text: 'Plasma Conc (mcg/mL)', color: '#86868B', font: { size: 10, weight: '600' } }
             }
           }
         }
@@ -1237,33 +943,41 @@
     }
 
     // -------------------------------------------------------------
-    // 7. LOAD CASE STUDY (Trigger Real Live Audit)
+    // 5. CASE TAB SWITCHER
     // -------------------------------------------------------------
-    async function loadCaseStudy(caseId) {
+    async function selectCaseTab(caseId) {
+      for (let i = 1; i <= 3; i++) {
+        const btn = document.getElementById(`case-btn-${i}`);
+        if (i === caseId) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      }
+
       const c = CASE_STUDIES[caseId];
       if (!c) return;
 
+      document.getElementById('case-box-title').textContent = c.title;
+      document.getElementById('case-box-desc').textContent = c.drugs.map(d => `${d.name} ${d.dose}`).join(', ');
+
       activeDrugs = c.drugs.map(d => ({ ...d }));
-      
-      // Update Hero Card Titles
       document.getElementById('hero-title').textContent = c.title;
       document.getElementById('hero-subtitle').textContent = c.subtitle;
 
       renderActiveDrugs();
       renderPairwiseMatrix();
-      
-      // Execute live autonomous audit via backend API
       await runAutonomousAudit();
     }
 
     // -------------------------------------------------------------
-    // 8. SEARCHABLE DRUG AUTOCOMPLETE ENGINE (Feature 1)
+    // 6. AUTOCOMPLETE ENGINE
     // -------------------------------------------------------------
     function handleAutocompleteInput(e) {
       const query = e.target.value.trim().toLowerCase();
       const dropdown = document.getElementById('autocomplete-dropdown');
 
-      if (!query || query.length < 1) {
+      if (!query) {
         dropdown.classList.add('hidden');
         currentFilteredDrugs = [];
         selectedAutocompleteIndex = -1;
@@ -1279,9 +993,9 @@
 
       if (currentFilteredDrugs.length === 0) {
         dropdown.innerHTML = `
-          <div class="p-3 text-xs text-gray-400 flex items-center justify-between">
+          <div class="p-3 text-xs text-[#86868B] flex items-center justify-between">
             <span>No exact match for "<strong>${escapeHtml(query)}</strong>"</span>
-            <button onclick="addDrugFromInput()" class="text-cyan-400 hover:underline font-semibold">+ Add Custom</button>
+            <button onclick="addDrugFromInput()" class="text-[#0071E3] hover:underline font-semibold">+ Add Custom</button>
           </div>
         `;
         dropdown.classList.remove('hidden');
@@ -1289,21 +1003,21 @@
         return;
       }
 
-      dropdown.innerHTML = currentFilteredDrugs.map((d, idx) => `
+      dropdown.innerHTML = currentFilteredDrugs.slice(0, 8).map((d, idx) => `
         <div 
           onclick="selectAutocompleteDrug(${idx})" 
-          class="p-2.5 hover:bg-gray-800 cursor-pointer transition-colors flex items-center justify-between group autocomplete-item"
+          class="p-3 hover:bg-[#F2F2F7] cursor-pointer transition-colors flex items-center justify-between group autocomplete-item"
           data-index="${idx}"
         >
           <div>
             <div class="flex items-center space-x-2">
-              <strong class="text-white text-xs group-hover:text-cyan-400">${d.name}</strong>
-              <span class="text-[11px] font-mono text-cyan-300 bg-cyan-950/40 border border-cyan-800/60 px-1.5 py-0.2 rounded">${d.dose}</span>
-              <span class="text-[10px] text-gray-400 font-mono italic">(${d.brand})</span>
+              <strong class="text-[#1D1D1F] text-xs group-hover:text-[#0071E3]">${d.name}</strong>
+              <span class="text-[10px] font-mono text-[#0071E3] bg-[#0071E3]/10 px-1.5 py-0.2 rounded font-semibold">${d.dose}</span>
+              <span class="text-[11px] text-[#86868B]">(${d.brand})</span>
             </div>
-            <div class="text-[10px] text-gray-400 mt-0.5">${d.class}</div>
+            <div class="text-[10px] text-[#86868B] mt-0.5">${d.class}</div>
           </div>
-          <span class="text-[10px] text-gray-500 group-hover:text-cyan-300 font-mono font-bold">+ Add</span>
+          <span class="text-[10px] text-[#86868B] group-hover:text-[#0071E3] font-semibold">+ Add</span>
         </div>
       `).join('');
 
@@ -1322,7 +1036,6 @@
       }
 
       const items = dropdown.querySelectorAll('.autocomplete-item');
-
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         selectedAutocompleteIndex = (selectedAutocompleteIndex + 1) % items.length;
@@ -1346,110 +1059,62 @@
     function updateAutocompleteHighlight(items) {
       items.forEach((item, idx) => {
         if (idx === selectedAutocompleteIndex) {
-          item.classList.add('bg-gray-800', 'border-l-2', 'border-cyan-400');
+          item.classList.add('bg-[#F2F2F7]', 'border-l-2', 'border-[#0071E3]');
           item.scrollIntoView({ block: 'nearest' });
         } else {
-          item.classList.remove('bg-gray-800', 'border-l-2', 'border-cyan-400');
+          item.classList.remove('bg-[#F2F2F7]', 'border-l-2', 'border-[#0071E3]');
         }
       });
     }
 
     function selectAutocompleteDrug(index) {
-      const drug = currentFilteredDrugs[index];
-      if (!drug) return;
+      const d = currentFilteredDrugs[index];
+      if (!d) return;
 
-      // Add to active regimen
-      activeDrugs.push({
-        name: drug.name,
-        dose: drug.dose,
-        class: drug.class
-      });
+      if (!activeDrugs.some(item => item.name.toLowerCase() === d.name.toLowerCase())) {
+        activeDrugs.push({
+          name: d.name,
+          dose: d.dose,
+          class: d.class
+        });
+        recalculateRegimen();
+      }
 
-      // Clear input and hide dropdown
-      const input = document.getElementById('drug-search-input');
-      input.value = '';
+      document.getElementById('drug-input').value = '';
       document.getElementById('autocomplete-dropdown').classList.add('hidden');
+    }
 
-      recalculateRegimen();
+    function quickAddDrug(name, dose, drugClass) {
+      if (!activeDrugs.some(d => d.name.toLowerCase() === name.toLowerCase())) {
+        activeDrugs.push({ name, dose, class: drugClass });
+        recalculateRegimen();
+      }
     }
 
     function addDrugFromInput() {
-      const input = document.getElementById('drug-search-input');
+      const input = document.getElementById('drug-input');
       const val = input.value.trim();
       if (!val) return;
 
-      // Check if matches known database item by name or brand
-      const query = val.toLowerCase();
-      const matched = DRUG_DATABASE.find(d => 
-        d.name.toLowerCase() === query || 
-        d.brand.toLowerCase().includes(query)
-      );
+      const parts = val.split(' ');
+      const name = parts[0];
+      const dose = parts.slice(1).join(' ') || 'Standard';
 
-      if (matched) {
+      if (!activeDrugs.some(d => d.name.toLowerCase() === name.toLowerCase())) {
         activeDrugs.push({
-          name: matched.name,
-          dose: matched.dose,
-          class: matched.class
+          name: name,
+          dose: dose,
+          class: 'Prescribed Agent'
         });
-      } else {
-        // Fallback custom drug entry
-        activeDrugs.push({
-          name: val,
-          dose: "Standard",
-          class: "Clinician Added"
-        });
+        recalculateRegimen();
       }
 
       input.value = '';
       document.getElementById('autocomplete-dropdown').classList.add('hidden');
-      recalculateRegimen();
     }
 
-    function quickAddDrug(brandOrName) {
-      const q = brandOrName.toLowerCase();
-      const matched = DRUG_DATABASE.find(d => 
-        d.name.toLowerCase().includes(q) || 
-        d.brand.toLowerCase().includes(q)
-      );
-      if (matched) {
-        // Prevent duplicate spam
-        if (!activeDrugs.some(d => d.name.toLowerCase() === matched.name.toLowerCase())) {
-          activeDrugs.push({
-            name: matched.name,
-            dose: matched.dose,
-            class: matched.class
-          });
-          recalculateRegimen();
-        }
-      }
-    }
-
-    // -------------------------------------------------------------
-    // 9. ACTIVE DRUGS TRAY MANAGEMENT
-    // -------------------------------------------------------------
-    function renderActiveDrugs() {
-      const container = document.getElementById('active-drugs-container');
-      const countEl = document.getElementById('drug-count');
-      if (countEl) countEl.textContent = activeDrugs.length;
-
-      if (!container) return;
-
-      if (activeDrugs.length === 0) {
-        container.innerHTML = `<span class="text-xs text-gray-500 italic">No medications currently active. Search above or select a clinical case.</span>`;
-        return;
-      }
-
-      container.innerHTML = activeDrugs.map((d, index) => `
-        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-800 border border-gray-700 text-gray-200 shadow-sm">
-          <strong class="text-cyan-400 mr-1">${d.name}</strong> 
-          <span class="text-gray-400 font-mono text-[11px] mr-1.5">${d.dose}</span>
-          <button onclick="removeDrug(${index})" class="text-gray-500 hover:text-red-400 font-bold ml-0.5 cursor-pointer" title="Remove">&times;</button>
-        </span>
-      `).join('');
-    }
-
-    function removeDrug(index) {
-      activeDrugs.splice(index, 1);
+    function removeDrug(idx) {
+      activeDrugs.splice(idx, 1);
       recalculateRegimen();
     }
 
@@ -1458,8 +1123,36 @@
       recalculateRegimen();
     }
 
+    function renderActiveDrugs() {
+      const container = document.getElementById('active-drugs-container');
+      const countBadge = document.getElementById('drug-count-badge');
+      if (countBadge) countBadge.textContent = activeDrugs.length;
+
+      if (activeDrugs.length === 0) {
+        container.innerHTML = `<div class="p-4 rounded-xl bg-[#F9F9FB] border border-[#E5E5EA] text-center text-xs text-[#86868B]">No active medications. Select a case study or search above.</div>`;
+        return;
+      }
+
+      container.innerHTML = activeDrugs.map((d, idx) => `
+        <div class="flex items-center justify-between p-3 rounded-xl bg-white border border-[#E5E5EA] shadow-sm hover:border-[#D2D2D7] transition-all">
+          <div>
+            <div class="flex items-center space-x-2">
+              <strong class="text-xs text-[#1D1D1F]">${escapeHtml(d.name)}</strong>
+              <span class="text-[10px] font-mono text-[#0071E3] bg-[#0071E3]/10 font-bold px-1.5 py-0.2 rounded">${escapeHtml(d.dose)}</span>
+            </div>
+            <span class="text-[10px] text-[#86868B]">${escapeHtml(d.class || "Therapeutic Agent")}</span>
+          </div>
+          <button onclick="removeDrug(${idx})" class="text-[#86868B] hover:text-[#FF3B30] p-1 transition-colors cursor-pointer" title="Remove medication">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      `).join('');
+
+      lucide.createIcons();
+    }
+
     // -------------------------------------------------------------
-    // 10. DYNAMIC N x N PAIRWISE INTERACTION HEATMAP MATRIX (Feature 2)
+    // 7. PAIRWISE MATRIX EVALUATION
     // -------------------------------------------------------------
     function getPairwiseEvaluation(drugA, drugB) {
       const nameA = (drugA.name || drugA).toLowerCase().trim();
@@ -1468,10 +1161,10 @@
       if (nameA === nameB) {
         return {
           severity: "SELF",
-          severityLabel: "Self Reference",
-          title: `${drugA.name} Monotherapy Baseline`,
-          colorClass: "bg-gray-800/40 text-gray-500 border border-gray-800",
-          printBadgeClass: "bg-gray-100 text-gray-500",
+          severityLabel: "Monotherapy Baseline",
+          title: `${drugA.name} Baseline`,
+          colorClass: "bg-[#F5F5F7] text-[#86868B] border border-[#E5E5EA]",
+          badgeClass: "bg-[#F5F5F7] text-[#86868B] border-[#E5E5EA]",
           icon: "minus",
           score: 0,
           mechanism: "Self-comparison baseline. No cross-reactivity.",
@@ -1481,12 +1174,10 @@
         };
       }
 
-      // Check explicit dictionary keys
       const key1 = `${nameA}+${nameB}`;
       const key2 = `${nameB}+${nameA}`;
       let match = PAIRWISE_RULES[key1] || PAIRWISE_RULES[key2];
 
-      // Substring fallback
       if (!match) {
         for (const [k, rule] of Object.entries(PAIRWISE_RULES)) {
           const [k1, k2] = k.split('+');
@@ -1501,7 +1192,7 @@
         return formatRuleMatch(match);
       }
 
-      // Pharmacological Class Heuristic Fallback
+      // Class-based fallback
       const classA = (drugA.class || "").toLowerCase();
       const classB = (drugB.class || "").toLowerCase();
 
@@ -1512,75 +1203,62 @@
           title: "Synergistic Antithrombotic Hemorrhage Liability",
           mechanism: "Dual targeting of the primary platelet plug and secondary fibrin clot pathways severely impairs physiological hemostasis.",
           consequence: "Elevated bleeding index across all tissue beds (RR > 3.0).",
-          recommendation: "Review necessity of combination; ensure lowest effective doses and monitor hemoglobin/hematocrit.",
-          citation: "CHEST Antithrombotic Consensus Guidelines"
+          recommendation: "De-escalate antiplatelet therapy unless indicated for acute coronary stenting (<3 months).",
+          citation: "ACC/AHA Guideline on Antithrombotic Management"
         });
       }
 
-      if (classA.includes('anticoagulant') && classB.includes('anticoagulant')) {
-        return formatRuleMatch({
-          severity: "LETHAL",
-          title: "Concurrent Full Systemic Anticoagulation",
-          mechanism: "Concomitant use of multiple full-dose systemic anticoagulants.",
-          consequence: "Extremely high risk of spontaneous fatal internal hemorrhage.",
-          recommendation: "CONTRAINDICATED. Never duplicate systemic anticoagulants except during brief monitored heparin bridging.",
-          citation: "ISTH Antithrombotic Guidelines"
-        });
-      }
-
-      // Default: Safe / Nominal
-      return formatRuleMatch({
+      return {
         severity: "SAFE",
-        title: "No Significant Documented Cross-Reactivity",
-        mechanism: "Independent clearance pathways and distinct receptor profiles with no documented major enzymatic competition.",
-        consequence: "Minimal risk of pharmacokinetic toxicity or altered therapeutic efficacy.",
-        recommendation: "Proceed with standard patient administration and routine clinical monitoring.",
-        citation: "OpenFDA Clinical Drug Interaction Database & Lexicomp"
-      });
+        severityLabel: "Compatible",
+        title: "No Lethal Interaction Detected",
+        colorClass: "bg-[#34C759]/10 text-[#248A3D] border border-[#34C759]/20 hover:bg-[#34C759]/20",
+        badgeClass: "bg-[#34C759]/10 text-[#248A3D] border-[#34C759]/30",
+        icon: "check-circle",
+        score: 1,
+        mechanism: "No competitive CYP450 enzyme inhibition or contraindicated pharmacodynamic antagonism identified.",
+        consequence: "Standard therapeutic exposure within therapeutic window.",
+        recommendation: "Maintain standard clinical surveillance.",
+        citation: "Clinical Pharmacogenetics Implementation Consortium (CPIC)"
+      };
     }
 
     function formatRuleMatch(rule) {
-      if (rule.severity === "LETHAL") {
+      const sev = rule.severity.toUpperCase();
+      if (sev === "LETHAL") {
         return {
           ...rule,
-          severityLabel: "Lethal / Black Box",
-          colorClass: "bg-red-500/25 text-red-400 border border-red-500/50 hover:bg-red-500/40",
-          badgeClass: "bg-red-500/20 text-red-400 border-red-500/40",
-          printBadgeClass: "print-lethal-badge",
+          severityLabel: "Lethal Contraindication",
+          colorClass: "bg-[#FF3B30]/10 text-[#D70015] border border-[#FF3B30]/30 hover:bg-[#FF3B30]/20 font-bold",
+          badgeClass: "bg-[#FF3B30]/10 text-[#D70015] border-[#FF3B30]/30",
           icon: "alert-octagon",
           score: 4
         };
-      }
-      if (rule.severity === "MAJOR") {
+      } else if (sev === "MAJOR") {
         return {
           ...rule,
           severityLabel: "Major Interaction",
-          colorClass: "bg-orange-500/20 text-orange-400 border border-orange-500/50 hover:bg-orange-500/35",
-          badgeClass: "bg-orange-500/20 text-orange-400 border-orange-500/40",
-          printBadgeClass: "print-major-badge",
+          colorClass: "bg-[#FF9500]/10 text-[#C97800] border border-[#FF9500]/30 hover:bg-[#FF9500]/20 font-semibold",
+          badgeClass: "bg-[#FF9500]/10 text-[#C97800] border-[#FF9500]/30",
           icon: "alert-triangle",
           score: 3
         };
-      }
-      if (rule.severity === "MILD") {
+      } else if (sev === "MILD") {
         return {
           ...rule,
-          severityLabel: "Mild / Monitor",
-          colorClass: "bg-amber-500/15 text-amber-300 border border-amber-500/40 hover:bg-amber-500/25",
-          badgeClass: "bg-amber-500/20 text-amber-300 border-amber-500/40",
-          printBadgeClass: "print-mild-badge",
+          severityLabel: "Mild Precaution",
+          colorClass: "bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100",
+          badgeClass: "bg-blue-50 text-blue-700 border-blue-300",
           icon: "info",
           score: 2
         };
       }
-      // SAFE
       return {
         ...rule,
-        severityLabel: "Safe / Nominal",
-        colorClass: "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25",
-        badgeClass: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-        printBadgeClass: "print-safe-badge",
-        icon: "check-circle-2",
+        severityLabel: "Compatible",
+        colorClass: "bg-[#34C759]/10 text-[#248A3D] border border-[#34C759]/20 hover:bg-[#34C759]/20",
+        badgeClass: "bg-[#34C759]/10 text-[#248A3D] border-[#34C759]/30",
+        icon: "check-circle",
         score: 1
       };
     }
@@ -1592,7 +1270,7 @@
 
       const n = activeDrugs.length;
       if (n === 0) {
-        table.innerHTML = `<tr><td class="p-6 text-center text-gray-500">No active medications to evaluate in pairwise matrix.</td></tr>`;
+        table.innerHTML = `<tr><td class="p-6 text-center text-[#86868B]">No active medications in regimen to evaluate.</td></tr>`;
         if (triageContainer) triageContainer.innerHTML = '';
         return;
       }
@@ -1602,35 +1280,32 @@
       let mildCount = 0;
       let safeCount = 0;
 
-      // Table Header (Columns)
       let headerHtml = `
         <thead>
-          <tr class="bg-gray-800/60 border-b border-gray-700 text-gray-300">
-            <th class="p-2.5 font-bold font-mono text-[11px] sticky left-0 bg-gray-900 z-20 border-r border-gray-800">
+          <tr class="bg-[#F5F5F7] border-b border-[#E5E5EA] text-[#6E6E73]">
+            <th class="p-3 font-bold font-mono text-[11px] sticky left-0 bg-[#F5F5F7] z-20 border-r border-[#E5E5EA]">
               Drug Pairs (N=${n})
             </th>
       `;
 
       activeDrugs.forEach(d => {
         headerHtml += `
-          <th class="p-2 text-center font-bold text-[11px] text-gray-200 border-r border-gray-800/60 whitespace-nowrap min-w-[90px]">
-            <span class="text-cyan-400 block">${d.name}</span>
-            <span class="text-[9px] font-mono text-gray-400 block">${d.dose}</span>
+          <th class="p-2.5 text-center font-bold text-[11px] text-[#1D1D1F] border-r border-[#E5E5EA] whitespace-nowrap min-w-[90px]">
+            <span class="text-[#0071E3] block">${escapeHtml(d.name)}</span>
+            <span class="text-[9px] font-mono text-[#86868B] block">${escapeHtml(d.dose)}</span>
           </th>
         `;
       });
-      headerHtml += `</tr></thead>`;
+      headerHtml += `</tr></thead><tbody>`;
 
-      // Table Body (Rows)
-      let bodyHtml = `<tbody>`;
+      let bodyHtml = '';
       for (let i = 0; i < n; i++) {
         const drugA = activeDrugs[i];
         bodyHtml += `
-          <tr class="border-b border-gray-800 hover:bg-gray-800/30 transition-colors">
-            <!-- Row Header (Sticky on left for responsive tablets/mobiles) -->
-            <td class="p-2.5 font-bold text-gray-300 text-xs sticky left-0 bg-gray-900 z-10 border-r border-gray-800 whitespace-nowrap shadow-sm">
-              <span class="text-cyan-400 block">${drugA.name}</span>
-              <span class="text-[9px] font-mono text-gray-500 block">${drugA.dose}</span>
+          <tr class="border-b border-[#E5E5EA] hover:bg-[#FBFBFD] transition-colors">
+            <td class="p-2.5 font-bold text-xs text-[#1D1D1F] sticky left-0 bg-white z-10 border-r border-[#E5E5EA] whitespace-nowrap">
+              <span>${escapeHtml(drugA.name)}</span>
+              <span class="text-[9px] font-mono text-[#86868B] block">${escapeHtml(drugA.dose)}</span>
             </td>
         `;
 
@@ -1638,7 +1313,6 @@
           const drugB = activeDrugs[j];
           const evalResult = getPairwiseEvaluation(drugA, drugB);
 
-          // Count unique non-self pairs (i < j)
           if (i < j) {
             if (evalResult.severity === "LETHAL") lethalCount++;
             else if (evalResult.severity === "MAJOR") majorCount++;
@@ -1648,17 +1322,17 @@
 
           if (i === j) {
             bodyHtml += `
-              <td class="p-2 text-center border-r border-gray-800/40 bg-gray-950/40 text-gray-600 font-mono text-xs select-none">
+              <td class="p-2 text-center border-r border-[#E5E5EA] bg-[#F5F5F7]/50 text-[#A1A1A6] font-mono text-xs select-none">
                 —
               </td>
             `;
           } else {
             bodyHtml += `
-              <td class="p-1.5 text-center border-r border-gray-800/40">
+              <td class="p-1.5 text-center border-r border-[#E5E5EA]">
                 <button 
                   onclick="openInteractionModal(${i}, ${j})" 
-                  class="w-full h-9 rounded-lg px-2 flex items-center justify-center space-x-1 font-bold text-[10px] transition-all transform hover:scale-105 cursor-pointer shadow-sm ${evalResult.colorClass}"
-                  title="Click for Biochemical Rationale: ${drugA.name} + ${drugB.name}"
+                  class="w-full h-8 rounded-lg px-2 flex items-center justify-center space-x-1 font-bold text-[10px] transition-all cursor-pointer shadow-xs ${evalResult.colorClass}"
+                  title="Biochemical Rationale: ${drugA.name} + ${drugB.name}"
                 >
                   <i data-lucide="${evalResult.icon}" class="w-3.5 h-3.5 shrink-0"></i>
                   <span class="hidden sm:inline uppercase">${evalResult.severity}</span>
@@ -1673,13 +1347,12 @@
 
       table.innerHTML = headerHtml + bodyHtml;
 
-      // Update Triage Summary Badges
       if (triageContainer) {
         triageContainer.innerHTML = `
-          ${lethalCount > 0 ? `<span class="bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded font-bold">${lethalCount} LETHAL</span>` : ''}
-          ${majorCount > 0 ? `<span class="bg-orange-500/20 text-orange-400 border border-orange-500/30 px-2 py-0.5 rounded font-bold">${majorCount} MAJOR</span>` : ''}
-          ${mildCount > 0 ? `<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded">${mildCount} MILD</span>` : ''}
-          <span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded">${safeCount} SAFE</span>
+          ${lethalCount > 0 ? `<span class="bg-[#FF3B30]/10 text-[#D70015] border border-[#FF3B30]/20 px-2.5 py-0.5 rounded-full font-bold">${lethalCount} LETHAL</span>` : ''}
+          ${majorCount > 0 ? `<span class="bg-[#FF9500]/10 text-[#C97800] border border-[#FF9500]/20 px-2.5 py-0.5 rounded-full font-bold">${majorCount} MAJOR</span>` : ''}
+          ${mildCount > 0 ? `<span class="bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-full">${mildCount} MILD</span>` : ''}
+          <span class="bg-[#34C759]/10 text-[#248A3D] border border-[#34C759]/20 px-2.5 py-0.5 rounded-full">${safeCount} SAFE</span>
         `;
       }
 
@@ -1687,73 +1360,58 @@
     }
 
     // -------------------------------------------------------------
-    // 11. BIOCHEMICAL INTERACTION RATIONALE MODAL
+    // 8. MODAL INTERACTION
     // -------------------------------------------------------------
-    let currentModalPair = null;
-
     function openInteractionModal(indexA, indexB) {
       const drugA = activeDrugs[indexA];
       const drugB = activeDrugs[indexB];
       if (!drugA || !drugB) return;
 
-      currentModalPair = { indexA, indexB, drugA, drugB };
       const evalResult = getPairwiseEvaluation(drugA, drugB);
 
-      // Title
       document.getElementById('modal-pair-title').innerHTML = `
-        <span class="text-cyan-400">${escapeHtml(drugA.name)} (${escapeHtml(drugA.dose)})</span>
-        <span class="text-gray-500">⟷</span>
-        <span class="text-white">${escapeHtml(drugB.name)} (${escapeHtml(drugB.dose)})</span>
+        <span class="text-[#0071E3]">${escapeHtml(drugA.name)} (${escapeHtml(drugA.dose)})</span>
+        <span class="text-[#86868B] mx-1.5">⟷</span>
+        <span class="text-[#1D1D1F]">${escapeHtml(drugB.name)} (${escapeHtml(drugB.dose)})</span>
       `;
 
-      // Severity Banner
       const banner = document.getElementById('modal-severity-banner');
-      banner.className = `p-3 rounded-xl mb-4 border flex items-center justify-between ${evalResult.badgeClass}`;
+      banner.className = `p-3.5 rounded-xl mb-4 border flex items-center justify-between ${evalResult.badgeClass}`;
       banner.innerHTML = `
         <div class="flex items-center space-x-2">
-          <i data-lucide="${evalResult.icon}" class="w-5 h-5"></i>
+          <i data-lucide="${evalResult.icon}" class="w-4 h-4"></i>
           <div>
             <strong class="text-xs uppercase font-extrabold tracking-wider block">${evalResult.severityLabel}</strong>
             <span class="text-[11px] opacity-90">${evalResult.title}</span>
           </div>
         </div>
-        <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-black/30 font-bold uppercase">${evalResult.severity}</span>
+        <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-black/5 font-bold uppercase">${evalResult.severity}</span>
       `;
 
-      // Sections
       document.getElementById('modal-mechanism').textContent = evalResult.mechanism;
       document.getElementById('modal-consequence').textContent = evalResult.consequence;
       document.getElementById('modal-recommendation').textContent = evalResult.recommendation;
       document.getElementById('modal-citation').textContent = evalResult.citation;
 
-      // Dynamic Substitution / Deprescribing Action Button
       const actionWrapper = document.getElementById('modal-action-wrapper');
       actionWrapper.innerHTML = '';
 
       if (evalResult.severity === "LETHAL" || evalResult.severity === "MAJOR") {
-        // Specific clinical substitution helpers
         const nameA = drugA.name.toLowerCase();
         const nameB = drugB.name.toLowerCase();
 
         if (nameA.includes("omeprazole") || nameB.includes("omeprazole")) {
           actionWrapper.innerHTML = `
-            <button onclick="applySubstitution('Omeprazole', 'Pantoprazole 40mg', 'Proton Pump Inhibitor (Low CYP2C19)')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-md shadow-emerald-600/30 flex items-center gap-1.5 transition-all cursor-pointer">
-              <i data-lucide="check" class="w-4 h-4"></i>
+            <button onclick="applySubstitution('Omeprazole', 'Pantoprazole 40mg', 'Proton Pump Inhibitor')" class="bg-[#34C759] hover:bg-[#2EB84E] text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer">
+              <i data-lucide="check" class="w-3.5 h-3.5"></i>
               <span>Substitute Omeprazole &rarr; Pantoprazole 40mg</span>
             </button>
           `;
         } else if (nameA.includes("linezolid") || nameB.includes("linezolid")) {
           actionWrapper.innerHTML = `
-            <button onclick="applySubstitution('Linezolid', 'Daptomycin 500mg IV', 'Lipopeptide Antibacterial (No MAOI)')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-md shadow-emerald-600/30 flex items-center gap-1.5 transition-all cursor-pointer">
-              <i data-lucide="check" class="w-4 h-4"></i>
+            <button onclick="applySubstitution('Linezolid', 'Daptomycin 500mg IV', 'Lipopeptide Antibacterial')" class="bg-[#34C759] hover:bg-[#2EB84E] text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer">
+              <i data-lucide="check" class="w-3.5 h-3.5"></i>
               <span>Substitute Linezolid &rarr; Daptomycin</span>
-            </button>
-          `;
-        } else if (nameA.includes("potassium") || nameB.includes("potassium")) {
-          actionWrapper.innerHTML = `
-            <button onclick="applyDeprescribe('Potassium')" class="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-md shadow-red-600/30 flex items-center gap-1.5 transition-all cursor-pointer">
-              <i data-lucide="trash-2" class="w-4 h-4"></i>
-              <span>Deprescribe Potassium Chloride Immediately</span>
             </button>
           `;
         }
@@ -1765,7 +1423,6 @@
 
     function closeInteractionModal() {
       document.getElementById('interaction-modal').classList.add('hidden');
-      currentModalPair = null;
     }
 
     function applySubstitution(targetDrugName, newDrugName, newDrugClass) {
@@ -1783,23 +1440,13 @@
       }
     }
 
-    function applyDeprescribe(targetDrugName) {
-      const idx = activeDrugs.findIndex(d => d.name.toLowerCase().includes(targetDrugName.toLowerCase()));
-      if (idx !== -1) {
-        activeDrugs.splice(idx, 1);
-        closeInteractionModal();
-        recalculateRegimen();
-      }
-    }
-
     // -------------------------------------------------------------
-    // 12. DYNAMIC REGIMEN RE-CALCULATION
+    // 9. DYNAMIC RECALCULATION & AUDIT
     // -------------------------------------------------------------
     function recalculateRegimen() {
       renderActiveDrugs();
       renderPairwiseMatrix();
 
-      // Recalculate Hazard Score based on worst pair
       let maxScore = 15;
       let worstSeverity = "SAFE";
       let worstTitle = "Nominal Regimen Compatibility";
@@ -1821,17 +1468,15 @@
               worstTitle = evalResult.title;
               worstSubtitle = evalResult.mechanism;
             }
-          } else if (evalResult.score === 2) {
-            maxScore = Math.max(maxScore, 45);
           }
         }
       }
 
       if (n === 0) {
         maxScore = 0;
-        worstSeverity = "CLEAR";
+        worstSeverity = "CLEARED";
         worstTitle = "No Active Medications";
-        worstSubtitle = "Add medications via autocomplete or select a preset clinical case.";
+        worstSubtitle = "Patient has no active medications prescribed.";
       }
 
       document.getElementById('hazard-score').textContent = maxScore;
@@ -1841,37 +1486,30 @@
 
       const badge = document.getElementById('severity-badge');
       badge.textContent = worstSeverity;
-      if (maxScore >= 80) {
-        badge.className = "px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider rounded-md bg-red-500/20 text-red-400 border border-red-500/30";
-        document.getElementById('hazard-bar').className = "h-full bg-red-500 transition-all duration-700";
-        document.getElementById('hazard-score').className = "text-4xl font-extrabold font-mono text-red-500";
-      } else if (maxScore >= 50) {
-        badge.className = "px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider rounded-md bg-amber-500/20 text-amber-400 border border-amber-500/30";
-        document.getElementById('hazard-bar').className = "h-full bg-amber-500 transition-all duration-700";
-        document.getElementById('hazard-score').className = "text-4xl font-extrabold font-mono text-amber-400";
+      if (worstSeverity === "CRITICAL WARNING") {
+        badge.className = "px-3 py-0.5 text-xs font-bold rounded-full bg-[#FF3B30]/10 text-[#D70015] border border-[#FF3B30]/20";
+      } else if (worstSeverity === "MAJOR RISK") {
+        badge.className = "px-3 py-0.5 text-xs font-bold rounded-full bg-[#FF9500]/10 text-[#C97800] border border-[#FF9500]/20";
       } else {
-        badge.className = "px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
-        document.getElementById('hazard-bar').className = "h-full bg-emerald-500 transition-all duration-700";
-        document.getElementById('hazard-score').className = "text-4xl font-extrabold font-mono text-emerald-400";
+        badge.className = "px-3 py-0.5 text-xs font-bold rounded-full bg-[#34C759]/10 text-[#248A3D] border border-[#34C759]/20";
       }
-
-      lucide.createIcons();
     }
 
     // -------------------------------------------------------------
-    // 13. REAL OCR FILE UPLOAD VIA GROQ / META LLAMA 3.2 VISION BACKEND
+    // 10. MULTIMODAL PRESCRIPTION UPLOAD
     // -------------------------------------------------------------
-    async function handleRxUpload(event) {
-      const file = event.target.files[0];
+    async function handleRxUpload(e) {
+      const file = e.target.files[0];
       if (!file) return;
 
-      const dropzone = document.getElementById('dropzone');
+      const dropzone = document.getElementById('rx-dropzone');
       dropzone.innerHTML = `
-        <div class="flex items-center justify-center space-x-2 text-cyan-400 py-4">
-          <div class="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
-          <span class="text-xs font-mono font-semibold">Sending ${escapeHtml(file.name)} to Meta Llama 3.2 Vision on Groq...</span>
+        <div class="flex items-center justify-center space-x-2 py-4 text-xs text-[#0071E3] font-semibold">
+          <i data-lucide="loader" class="w-4 h-4 animate-spin"></i>
+          <span>Meta Llama 3.2 Vision analyzing handwriting & labels...</span>
         </div>
       `;
+      lucide.createIcons();
 
       const formData = new FormData();
       formData.append('file', file);
@@ -1883,12 +1521,10 @@
         });
 
         if (!response.ok) {
-          throw new Error(`Server returned HTTP ${response.status}`);
+          throw new Error(`HTTP ${response.status}`);
         }
 
         const data = await response.json();
-        
-        // Dynamically update activeDrugs with REAL extracted drugs
         if (data.extracted_medications && data.extracted_medications.length > 0) {
           activeDrugs = data.extracted_medications.map(m => ({
             name: m.name,
@@ -1901,35 +1537,37 @@
         applyAuditResultToUI(data);
 
         dropzone.innerHTML = `
-          <div class="flex items-center justify-between p-2 rounded-lg bg-emerald-950/30 border border-emerald-500/30 text-emerald-400 text-xs">
-            <span class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4"></i> Live Llama Vision OCR: ${data.extracted_medications ? data.extracted_medications.length : 0} Drugs Extracted</span>
-            <button onclick="event.stopPropagation(); document.getElementById('rx-file-input').click();" class="text-[10px] text-gray-400 hover:text-white cursor-pointer">Scan Another</button>
+          <div class="flex items-center justify-between p-3 rounded-xl bg-[#34C759]/10 border border-[#34C759]/20 text-[#248A3D] text-xs">
+            <span class="flex items-center gap-2 font-semibold"><i data-lucide="check-circle" class="w-4 h-4"></i> Llama Vision OCR: ${data.extracted_medications ? data.extracted_medications.length : 0} Drugs Extracted</span>
+            <button onclick="event.stopPropagation(); document.getElementById('rx-file-input').click();" class="text-[11px] underline cursor-pointer">Scan Another</button>
           </div>
         `;
         lucide.createIcons();
       } catch (err) {
         console.warn("Backend vision offline or error:", err);
         dropzone.innerHTML = `
-          <div class="flex items-center justify-between p-2 rounded-lg bg-amber-950/40 border border-amber-500/40 text-amber-300 text-xs">
-            <span class="flex items-center gap-1.5"><i data-lucide="alert-circle" class="w-4 h-4 text-amber-400"></i> Vision Error (${escapeHtml(err.message)})</span>
-            <button onclick="event.stopPropagation(); document.getElementById('rx-file-input').click();" class="text-[10px] text-gray-300 underline">Try Again</button>
+          <div class="flex items-center justify-between p-3 rounded-xl bg-[#FFFBF0] border border-[#FFE8B8] text-[#C97800] text-xs">
+            <span class="flex items-center gap-1.5"><i data-lucide="alert-circle" class="w-4 h-4 text-[#FF9500]"></i> OCR Unavailable (${escapeHtml(err.message)})</span>
+            <button onclick="event.stopPropagation(); document.getElementById('rx-file-input').click();" class="text-[11px] underline">Try Again</button>
           </div>
         `;
         lucide.createIcons();
       }
     }
 
+    // -------------------------------------------------------------
+    // 11. AUDIT RESULT UI APPLIER
+    // -------------------------------------------------------------
     function applyAuditResultToUI(data) {
-      // 1. Hazard Score & Severity Badge
       if (data.hazard_score !== undefined) {
         document.getElementById('hazard-score').textContent = data.hazard_score;
         document.getElementById('hazard-bar').style.width = data.hazard_score + '%';
         const badge = document.getElementById('severity-badge');
         badge.textContent = data.hazard_score >= 80 ? "CRITICAL HAZARD" : (data.hazard_score >= 50 ? "MAJOR CONFLICT" : "NOMINAL REGIMEN");
-        badge.className = data.hazard_score >= 80 ? "px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider rounded-md border text-red-400 bg-red-500/20 border-red-500/30" : (data.hazard_score >= 50 ? "px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider rounded-md border text-amber-400 bg-amber-500/20 border-amber-500/30" : "px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider rounded-md border text-emerald-400 bg-emerald-500/20 border-emerald-500/30");
+        badge.className = data.hazard_score >= 80 ? "px-3 py-0.5 text-xs font-bold rounded-full bg-[#FF3B30]/10 text-[#D70015] border border-[#FF3B30]/20" : (data.hazard_score >= 50 ? "px-3 py-0.5 text-xs font-bold rounded-full bg-[#FF9500]/10 text-[#C97800] border border-[#FF9500]/20" : "px-3 py-0.5 text-xs font-bold rounded-full bg-[#34C759]/10 text-[#248A3D] border border-[#34C759]/20");
       }
 
-      // 2. Dynamic Pharmacokinetic Simulation HUD
+      // PK Data
       if (data.pharmacokinetics) {
         const pk = data.pharmacokinetics;
         document.getElementById('pk-half-life').textContent = (pk.baseline_t_half_h || "--") + " Hours";
@@ -1946,49 +1584,49 @@
         }
       }
 
-      // 3. Live OpenFDA Warnings & Regulatory Alerts
+      // FDA Boxed Warnings
       const fdaContainer = document.getElementById('fda-boxed-warnings');
       if (data.fda_warnings && data.fda_warnings.length > 0) {
         fdaContainer.innerHTML = data.fda_warnings.map(w => `
-          <div class="p-3.5 rounded-xl border border-red-500/30 bg-red-950/20">
-            <div class="flex items-center justify-between text-xs font-bold text-red-400 mb-1">
+          <div class="p-4 rounded-xl border border-[#FFD0D0] bg-[#FFF5F5]">
+            <div class="flex items-center justify-between text-xs font-bold text-[#D70015] mb-1">
               <span class="flex items-center gap-1.5 font-mono"><i data-lucide="shield-alert" class="w-3.5 h-3.5"></i> ${escapeHtml(w.drug)}</span>
-              <span class="text-[10px] bg-red-500/20 px-2 py-0.5 rounded text-red-300 font-mono">LIVE OPENFDA WARNING</span>
+              <span class="text-[10px] bg-[#FF3B30]/10 px-2 py-0.5 rounded-full text-[#D70015] font-mono">LIVE OPENFDA WARNING</span>
             </div>
-            <h4 class="text-xs font-bold text-gray-200 mb-1">${escapeHtml(w.title)}</h4>
-            <p class="text-xs text-gray-400 leading-relaxed">${escapeHtml(w.text)}</p>
+            <h4 class="text-xs font-bold text-[#1D1D1F] mb-1">${escapeHtml(w.title)}</h4>
+            <p class="text-xs text-[#6E6E73] leading-relaxed">${escapeHtml(w.text)}</p>
           </div>
         `).join('');
       } else if (data.warnings && data.warnings.length > 0) {
         fdaContainer.innerHTML = data.warnings.map(w => `
-          <div class="p-3.5 rounded-xl border border-amber-500/30 bg-amber-950/20">
-            <div class="flex items-center justify-between text-xs font-bold text-amber-400 mb-1">
+          <div class="p-4 rounded-xl border border-[#FFE8B8] bg-[#FFFBF0]">
+            <div class="flex items-center justify-between text-xs font-bold text-[#C97800] mb-1">
               <span class="flex items-center gap-1.5 font-mono"><i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> ${escapeHtml(w.drug || "REGIMEN ALERT")}</span>
-              <span class="text-[10px] bg-amber-500/20 px-2 py-0.5 rounded text-amber-300 font-mono">${escapeHtml(w.severity)}</span>
+              <span class="text-[10px] bg-[#FF9500]/10 px-2 py-0.5 rounded-full text-[#C97800] font-mono">${escapeHtml(w.severity)}</span>
             </div>
-            <h4 class="text-xs font-bold text-gray-200 mb-1">${escapeHtml(w.type)}</h4>
-            <p class="text-xs text-gray-400 leading-relaxed">${escapeHtml(w.message)}</p>
+            <h4 class="text-xs font-bold text-[#1D1D1F] mb-1">${escapeHtml(w.type)}</h4>
+            <p class="text-xs text-[#6E6E73] leading-relaxed">${escapeHtml(w.message)}</p>
           </div>
         `).join('');
       } else {
         fdaContainer.innerHTML = `
-          <div class="p-4 rounded-xl border border-emerald-500/30 bg-emerald-950/10 text-emerald-400 text-xs flex items-center gap-2">
+          <div class="p-4 rounded-xl border border-[#34C759]/20 bg-[#34C759]/10 text-[#248A3D] text-xs flex items-center gap-2">
             <i data-lucide="check-circle" class="w-4 h-4"></i>
             <span>No FDA Black Box Warnings or acute biochemical hazards detected for active regimen.</span>
           </div>
         `;
       }
 
-      // 4. Generative AI Action Directives
+      // AI Clinical Directives
       if (data.actions && data.actions.length > 0) {
         const aiContainer = document.getElementById('ai-recommendations');
         aiContainer.innerHTML = data.actions.map(a => `
-          <div class="p-3.5 rounded-xl border border-gray-800 bg-gray-800/40 hover:border-gray-700 transition-all">
-            <div class="flex items-center justify-between mb-1">
-              <span class="text-xs font-bold text-white">${escapeHtml(a.title)}</span>
-              <span class="text-[10px] px-2 py-0.5 rounded font-mono font-bold border ${a.badgeClass || 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'}">${escapeHtml(a.type)}</span>
+          <div class="p-4 rounded-xl border border-[#E5E5EA] bg-white shadow-xs hover:border-[#D2D2D7] transition-all">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-xs font-bold text-[#1D1D1F]">${escapeHtml(a.title)}</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${a.badgeClass || 'bg-[#0071E3]/10 text-[#0071E3]'}">${escapeHtml(a.type)}</span>
             </div>
-            <p class="text-xs text-gray-400 leading-relaxed">${escapeHtml(a.desc)}</p>
+            <p class="text-xs text-[#6E6E73] leading-relaxed">${escapeHtml(a.desc)}</p>
           </div>
         `).join('');
       }
@@ -1997,13 +1635,8 @@
       lucide.createIcons();
     }
 
-    // -------------------------------------------------------------
-    // 14. REAL DYNAMIC RUN AUDIT ACTION
-    // -------------------------------------------------------------
     async function runAutonomousAudit() {
       const hero = document.getElementById('audit-hero-card');
-      hero.classList.add('glow-red');
-
       try {
         const response = await fetch('http://localhost:8000/api/audit-regimen', {
           method: 'POST',
@@ -2019,98 +1652,62 @@
           applyAuditResultToUI(result);
         }
       } catch (e) {
-        console.warn("Backend API offline, rendering matrix locally:", e);
+        console.warn("Backend API offline, evaluating locally:", e);
+        recalculateRegimen();
       }
-
-      setTimeout(() => hero.classList.remove('glow-red'), 1000);
     }
 
     // -------------------------------------------------------------
-    // 15. DIRECT CLIENT-SIDE PDF / PRINT REPORT EXPORT (Feature 4)
+    // 12. PRINT / EXPORT ACTION
     // -------------------------------------------------------------
     function triggerClinicalExport() {
-      // 1. Populate Print Audit Date
       const now = new Date();
       document.getElementById('print-audit-date').textContent = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
-
-      // 2. Populate Print Drug Count & Regimen Table
       document.getElementById('print-drug-count').textContent = activeDrugs.length;
+
       const printTbody = document.getElementById('print-regimen-tbody');
       printTbody.innerHTML = activeDrugs.map((d, idx) => `
         <tr>
-          <td>${idx + 1}</td>
-          <td><strong>${escapeHtml(d.name)}</strong></td>
-          <td>${escapeHtml(d.dose)}</td>
-          <td>${escapeHtml(d.class || "General")}</td>
-          <td>${getDrugTargetInfo(d.name)}</td>
+          <td class="border p-2">${idx + 1}</td>
+          <td class="border p-2 font-bold">${escapeHtml(d.name)}</td>
+          <td class="border p-2 font-mono">${escapeHtml(d.dose)}</td>
+          <td class="border p-2">${escapeHtml(d.class || "General")}</td>
+          <td class="border p-2 font-mono">${getDrugTargetInfo(d.name)}</td>
         </tr>
       `).join('');
 
-      // 3. Populate Print Hazard & Badges
       document.getElementById('print-hazard-score').textContent = document.getElementById('hazard-score').textContent;
       document.getElementById('print-severity-badge').textContent = document.getElementById('severity-badge').textContent;
       document.getElementById('print-hero-title').textContent = document.getElementById('hero-title').textContent;
       document.getElementById('print-hero-subtitle').textContent = document.getElementById('hero-subtitle').textContent;
 
-      // 4. Populate Print N x N Matrix
-      const printMatrixContainer = document.getElementById('print-matrix-container');
-      const n = activeDrugs.length;
-      let matrixHtml = `
-        <table class="w-full text-xs">
-          <thead>
-            <tr class="bg-gray-100">
-              <th>Medication</th>
-              ${activeDrugs.map(d => `<th class="text-center font-bold">${escapeHtml(d.name)}</th>`).join('')}
-            </tr>
-          </thead>
-          <tbody>
-      `;
-      for (let i = 0; i < n; i++) {
-        matrixHtml += `<tr><td class="font-bold bg-gray-50">${escapeHtml(activeDrugs[i].name)}</td>`;
-        for (let j = 0; j < n; j++) {
-          if (i === j) {
-            matrixHtml += `<td class="text-center text-gray-400 bg-gray-50">—</td>`;
-          } else {
-            const res = getPairwiseEvaluation(activeDrugs[i], activeDrugs[j]);
-            matrixHtml += `
-              <td class="text-center font-bold ${res.printBadgeClass}">
-                ${res.severity}
-              </td>
-            `;
-          }
-        }
-        matrixHtml += `</tr>`;
-      }
-      matrixHtml += `</tbody></table>`;
-      printMatrixContainer.innerHTML = matrixHtml;
-
-      // 5. Populate Print FDA Warnings
-      const fdaScreen = document.getElementById('fda-boxed-warnings');
-      document.getElementById('print-fda-warnings').innerHTML = fdaScreen.innerHTML;
-
-      // 6. Populate Print AI Recommendations
-      const aiScreen = document.getElementById('ai-recommendations');
-      document.getElementById('print-ai-recommendations').innerHTML = aiScreen.innerHTML;
-
-      // 7. Trigger native browser print dialog
       window.print();
     }
 
     function getDrugTargetInfo(drugName) {
-      const q = drugName.toLowerCase();
-      const matched = DRUG_DATABASE.find(d => d.name.toLowerCase() === q);
-      return matched ? matched.targets : "Hepatic / Renal clearance";
+      const d = DRUG_DATABASE.find(item => item.name.toLowerCase() === drugName.toLowerCase());
+      if (d) {
+        return `CYP: ${d.cyp.join(', ') || 'None'}`;
+      }
+      return 'Standard Hepatic';
     }
 
-    function escapeHtml(text) {
-      if (!text) return '';
-      return String(text)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
     }
+
+    // Initialization
+    window.addEventListener('DOMContentLoaded', () => {
+      initChart();
+      selectCaseTab(1);
+      lucide.createIcons();
+    });
   </script>
 </body>
 </html>
